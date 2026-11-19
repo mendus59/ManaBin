@@ -1,4 +1,4 @@
-// Header control showing who is signed in, with Google sign-in for guests.
+// Header control showing who is signed in, with Google sign-in for guests and signed-out visitors.
 import { useState } from "preact/hooks";
 import { useCollection } from "../state/collection";
 
@@ -9,14 +9,14 @@ export function AccountButton() {
   const a = col.account;
 
   if (col.kind === "memory") return <span class="account muted" title="This build keeps your collection in this browser only">Saved in this browser</span>;
-  if (!a) return <span class="account muted">{col.error ? "Offline" : "Connecting…"}</span>;
+  if (!a && !col.signedOut) return <span class="account muted">{col.error ? "Offline" : "Connecting…"}</span>;
 
-  if (a.isAnonymous) {
+  if (!a || a.isAnonymous) {
     return (
       <span class="account">
-        <span class="muted" title="Your collection is saved to a guest account on this device">Guest</span>
+        {a && <span class="muted" title="Your collection is saved to a guest account on this device">Guest</span>}
         <button type="button" class="ghost small" disabled={busy}
-          title="Keep your collection in your Google account and use it on any device"
+          title={a ? "Keep your collection in your Google account and use it on any device" : "Sign in to keep a collection and add friends"}
           onClick={async () => {
             setBusy(true);
             setNote(await col.signIn());
@@ -39,7 +39,7 @@ export function AccountButton() {
       <div class="menu-body">
         <p class="muted">{a.email}</p>
         <button type="button" class="ghost" onClick={() => col.signOut()}>Sign out</button>
-        <p class="muted small">Signing out leaves your collection in your Google account. This device starts a new, empty guest collection.</p>
+        <p class="muted small">Signing out leaves your collection in your Google account.</p>
       </div>
     </details>
   );

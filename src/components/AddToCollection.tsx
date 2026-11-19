@@ -2,6 +2,7 @@
 import { useEffect, useState } from "preact/hooks";
 import { CONDITIONS, FINISH_LABELS, LANGUAGES, entriesFor, type Condition, type Finish } from "../lib/collection";
 import { useCollection } from "../state/collection";
+import { SignInPrompt } from "./SignInPrompt";
 
 interface Props {
   printingId: string;
@@ -28,6 +29,9 @@ export function AddToCollection({ printingId, oracleId, finishes, lang, label }:
   }, [printingId]);
 
   if (!oracleId) return null;
+  if (col.signedOut) {
+    return <section class="owned-box"><SignInPrompt compact why="Sign in with Google to add cards to your collection." /></section>;
+  }
   if (!col.entries) {
     return <section class="owned-box"><p class="muted">{col.error ? "Your collection isn't available right now." : "Loading your collection…"}</p></section>;
   }

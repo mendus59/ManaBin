@@ -4,7 +4,7 @@ import type { Entries, Entry } from "./collection";
 
 export interface Account {
   uid: string;
-  /** Guest accounts are created automatically; signing in with Google keeps their data. */
+  /** Guest accounts are created automatically when the Firebase project allows them. */
   isAnonymous: boolean;
   name?: string | null;
   email?: string | null;
@@ -17,17 +17,54 @@ export interface Changes {
   remove: string[];
 }
 
+/** What other ManaBin users can see about you: never your email. */
+export interface Profile {
+  uid: string;
+  name: string;
+  photo?: string | null;
+  /** short code friends type in (or follow as a link) to add you */
+  code: string;
+}
+
+export interface Friendship {
+  id: string;
+  members: [string, string];
+  /** who sent the request */
+  from: string;
+  status: "pending" | "accepted";
+  names: Record<string, string>;
+  photos?: Record<string, string | null>;
+  /** sharing[uid] = true when that member shares their collection with the other */
+  sharing?: Record<string, boolean>;
+}
+
+export interface Social {
+  /** Your public profile, created on first use. Needs a Google account. */
+  ensureProfile(a: Account): Promise<Profile>;
+  findByCode(code: string): Promise<Profile | null>;
+  watchFriendships(uid: string, cb: (f: Friendship[]) => void, onError: (e: Error) => void): () => void;
+  request(me: Profile, them: Profile): Promise<void>;
+  accept(f: Friendship): Promise<void>;
+  /** Declines a request, cancels one you sent, or removes a friend (and stops sharing both ways). */
+  remove(f: Friendship, me: string): Promise<void>;
+  setSharing(f: Friendship, me: string, on: boolean): Promise<void>;
+}
+
 export interface Backend {
-  /** Calls back with the signed-in account (a guest account is created if needed). */
+  /**
+   * Calls back with the signed-in account. A guest account is created if the project allows
+   * them; otherwise it calls back with null until the user signs in with Google.
+   */
   onAccount(cb: (a: Account | null) => void, onError: (e: Error) => void): () => void;
   /** Signs in with Google. A guest's collection carries over; returns how many entries were merged into an existing account. */
   signInWithGoogle(guestEntries: Entries): Promise<{ merged: number }>;
   signOut(): Promise<void>;
-  /** Live view of the account's collection. `pending` is true while local changes haven't reached the server. */
+  /** Live view of a collection: your own, or a friend's that they share with you. `pending` is true while local changes haven't reached the server. */
   subscribe(uid: string, cb: (entries: Entries, pending: boolean) => void, onError: (e: Error) => void): () => void;
   write(uid: string, changes: Changes): Promise<void>;
-  /** Short description for the UI, e.g. "Saved to your Google account". */
   readonly kind: "firebase" | "memory";
+  /** Friends and sharing; only the Firebase backend has them. */
+  readonly social?: Social;
 }
 
 export async function getBackend(): Promise<Backend> {
