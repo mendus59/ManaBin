@@ -49,6 +49,7 @@ export function LibraryView({ nav }: { nav: ComponentChildren }) {
     );
   }
 
+  const mainCards = lib.cards.reduce((n, c) => n + (c.extra ? 0 : 1), 0);
   const newest = lib.manifest.newest_set ? lib.sets.get(lib.manifest.newest_set) : undefined;
   return (
     <Browse
@@ -64,7 +65,7 @@ export function LibraryView({ nav }: { nav: ComponentChildren }) {
       headerRight={newest && <p class="total" title="Newest set in the library">Newest set <strong>{newest.name}</strong></p>}
       footer={
         <p>
-          {lib.manifest.cards.toLocaleString()} cards and {lib.manifest.printings.toLocaleString()} printings from {lib.manifest.sets.toLocaleString()} sets,
+          {mainCards.toLocaleString()} cards (plus {(lib.cards.length - mainCards).toLocaleString()} tokens and other extras) and {lib.manifest.printings.toLocaleString()} printings from {lib.manifest.sets.toLocaleString()} sets,
           updated {day(lib.manifest.built_at)}. Prices are TCGplayer market prices via Scryfall.
           Card data and images from <a href="https://scryfall.com" target="_blank" rel="noopener">Scryfall</a>.
           Magic: The Gathering is © Wizards of the Coast.

@@ -55,7 +55,7 @@ class BuildTests(unittest.TestCase):
             card("1", oid, "Bolt", "lea", "1993-08-05", border_color="black", prices={"usd": "400.00"}),
             card("2", oid, "Bolt", "m11", "2010-07-16", border_color="black", prices={"usd": "1.00"}),
             card("3", oid, "Bolt", "sld", "2023-01-01", border_color="borderless", promo=True),
-            card("4", "cd" + "0" * 34, "Token", "tm11", "2010-07-16", layout="token"),
+            card("4", "cd" + "0" * 34, "Token", "tsld", "2024-01-01", layout="token", set_type="token"),
             card("5", "ef" + "0" * 34, "Arena Only", "ymid", "2021-12-09", digital=True),
         ]
         with tempfile.TemporaryDirectory() as tmp:
@@ -66,6 +66,7 @@ class BuildTests(unittest.TestCase):
             lib = json.loads((out / "cards.json").read_text())
             self.assertEqual(m["cards"], 2)  # Bolt, plus the token as an extra; the digital card is dropped
             self.assertEqual(m["printings"], 4)
+            self.assertEqual(m["newest_set"], "sld")  # not the token set
             self.assertEqual([c["name"] for c in lib if c.get("extra")], ["Token"])
             bolt = lib[0]
             self.assertEqual(bolt["set"], "m11")  # newest regular printing, not the promo
