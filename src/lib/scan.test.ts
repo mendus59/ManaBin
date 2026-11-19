@@ -4,6 +4,7 @@ import { addPending, nameMatcher, normalizeName, pickPrinting, readCollectorLine
 import type { Card, Printing } from "./cards";
 
 const cards = [
+  { oracle_id: "emeritus", name: "Emeritus of Conflict // Lightning Bolt" },
   { oracle_id: "bolt", name: "Lightning Bolt" },
   { oracle_id: "ajani", name: "Ajani, the Greathearted" },
   { oracle_id: "opt", name: "Opt" },
@@ -23,6 +24,7 @@ test("names read by the camera match the right card", () => {
   assert.equal(hit("Ajani, the Greathearted @ ©"), "ajani");
   assert.equal(hit("Ajani the Greatheartecl"), "ajani");
   assert.equal(hit("Delver of Secrets"), "delver");
+  assert.equal(hit("Emeritus of Conflict"), "emeritus");
   assert.equal(hit("Fire"), "fire");
   assert.equal(hit("Lim-Dul's Vault"), "lim");
   assert.equal(hit("Opt"), "opt");
