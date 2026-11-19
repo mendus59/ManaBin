@@ -84,20 +84,23 @@ interface IndexEntry { key: string; card: Card }
 export function nameMatcher(cards: Card[]) {
   const entries: IndexEntry[] = [];
   const exact = new Map<string, Card>();
-  const put = (name: string, card: Card) => {
+  const rank = new Map<string, number>();
+  // A card's whole name beats another card's face of the same name (Lightning Bolt the card over
+  // the back of Emeritus of Conflict // Lightning Bolt), and a real card beats a token.
+  const put = (name: string, card: Card, face: boolean) => {
     const key = normalizeName(name);
     if (key.length < 2) return;
-    const cur = exact.get(key);
-    // A real card beats a token or other extra with the same name.
-    if (!cur || (cur.extra && !card.extra)) {
-      if (!cur) entries.push({ key, card });
-      else entries[entries.findIndex((e) => e.key === key)] = { key, card };
-      exact.set(key, card);
-    }
+    const r = (face ? 0 : 2) + (card.extra ? 0 : 1);
+    const cur = rank.get(key);
+    if (cur != null && cur >= r) return;
+    if (cur == null) entries.push({ key, card });
+    else entries[entries.findIndex((e) => e.key === key)] = { key, card };
+    exact.set(key, card);
+    rank.set(key, r);
   };
   for (const c of cards) {
-    put(c.name, c);
-    if (c.name.includes(" // ")) for (const face of c.name.split(" // ")) put(face, c);
+    put(c.name, c, false);
+    if (c.name.includes(" // ")) for (const face of c.name.split(" // ")) put(face, c, true);
   }
 
   /** Lowest score accepted, by name length: short names must be read exactly. */
