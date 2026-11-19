@@ -85,3 +85,32 @@ export async function lookupOracleIds(printingIds: string[]): Promise<Map<string
   }));
   return out;
 }
+
+const priceShards = new Map<string, Promise<Record<string, number[]>>>();
+
+/**
+ * Card Kingdom and MTGGoldfish prices for every printing of these cards, by printing ID.
+ * Empty when the price job hasn't run yet.
+ */
+export async function loadStorePrices(oracleIds: string[]): Promise<Map<string, number[]>> {
+  const out = new Map<string, number[]>();
+  await Promise.all([...new Set(oracleIds.map((o) => o.slice(0, 2)))].map(async (prefix) => {
+    let shard = priceShards.get(prefix);
+    if (!shard) {
+      shard = getJson<Record<string, number[]>>(`library/prices/${prefix}.json`).catch(() => ({}));
+      priceShards.set(prefix, shard);
+    }
+    for (const [id, p] of Object.entries(await shard)) out.set(id, p);
+  }));
+  return out;
+}
+
+export interface PriceManifest { built_at: string; card_kingdom: number; mtggoldfish: number }
+
+let priceManifest: Promise<PriceManifest | null> | null = null;
+
+/** When the store prices were fetched, or null if they never have been. */
+export function loadPriceManifest(): Promise<PriceManifest | null> {
+  priceManifest ??= getJson<PriceManifest>("library/prices/manifest.json").catch(() => null);
+  return priceManifest;
+}

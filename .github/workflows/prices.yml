@@ -1,0 +1,58 @@
+# Card Kingdom and MTGGoldfish prices for every printing in the card library, weekly.
+# Like the library, the price files live on their own branch (`prices`), not main.
+name: Store prices
+
+on:
+  schedule:
+    - cron: "0 12 * * 1"  # Mondays 12:00 UTC
+  workflow_dispatch:
+    inputs:
+      goldfish:
+        description: Include MTGGoldfish (about 20 minutes)
+        type: boolean
+        default: true
+
+concurrency:
+  group: prices
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Get the card library
+        run: |
+          mkdir -p "$RUNNER_TEMP/library"
+          git fetch --depth 1 origin data
+          git archive origin/data prints | tar -x -C "$RUNNER_TEMP/library"
+      - name: Fetch prices
+        run: |
+          python tools/build_prices.py --library "$RUNNER_TEMP/library" --out "$RUNNER_TEMP/prices" \
+            ${{ (github.event_name == 'workflow_dispatch' && !inputs.goldfish) && '--no-goldfish' || '' }}
+      - name: Publish to the prices branch
+        working-directory: ${{ runner.temp }}/prices
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          # One commit, force-pushed, so old prices don't pile up in the repo.
+          git init -q -b prices
+          git config user.name "github-actions[bot]"
+          git config user.email "41898+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Store prices $(date -u +%Y-%m-%d)"
+          git push -f "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.git" prices
+
+  deploy:
+    needs: build
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/pages.yml
