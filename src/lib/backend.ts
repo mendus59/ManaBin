@@ -1,7 +1,7 @@
 // Where the collection is stored. The app uses Firebase (Firestore + Auth); tests and local
 // development can use an in-browser store instead by building with VITE_STORE=memory.
 import type { Entries, Entry } from "./collection";
-import type { Deck } from "./decks";
+import type { Deck, WishItem } from "./decks";
 
 export interface Account {
   uid: string;
@@ -71,6 +71,8 @@ export interface Backend {
   /** A friend's decks that they share with you, live. */
   watchSharedDecks(owner: string, me: string, cb: (decks: Deck[]) => void, onError: (e: Error) => void): () => void;
   saveDeck(uid: string, deck: Deck): Promise<void>;
+  watchWishlist(uid: string, cb: (items: WishItem[]) => void, onError: (e: Error) => void): () => void;
+  setWishlist(uid: string, items: WishItem[]): Promise<void>;
   deleteDeck(uid: string, id: string): Promise<void>;
   readonly kind: "firebase" | "memory";
   /** Friends and sharing; only the Firebase backend has them. */
@@ -134,6 +136,12 @@ function memoryBackend(): Backend {
     },
     watchSharedDecks() {
       return () => {};
+    },
+    watchWishlist(_uid, cb) {
+      return watchKey<WishItem[]>("manabin-memory-wishlist", [], cb);
+    },
+    async setWishlist(_uid, items) {
+      putKey("manabin-memory-wishlist", items);
     },
     async saveDeck(_uid, deck) {
       const decks = getKey<Deck[]>("manabin-memory-decks", []).filter((d) => d.id !== deck.id);

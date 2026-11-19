@@ -114,3 +114,30 @@ export function loadPriceManifest(): Promise<PriceManifest | null> {
   priceManifest ??= getJson<PriceManifest>("library/prices/manifest.json").catch(() => null);
   return priceManifest;
 }
+
+/**
+ * The cheapest non-foil price (foil where a card has no non-foil) of any printing of each card,
+ * at each store: [TCGplayer, Card Kingdom, MTGGoldfish], 0 where a store has none.
+ */
+export async function cheapestByStore(oracleIds: string[]): Promise<Map<string, number[]>> {
+  const ids = [...new Set(oracleIds)];
+  const [store, printings] = await Promise.all([
+    loadStorePrices(ids),
+    Promise.all(ids.map(async (o) => [o, await loadPrintings(o)] as const)),
+  ]);
+  const out = new Map<string, number[]>();
+  for (const [o, ps] of printings) {
+    const best = [0, 0, 0];
+    const take = (i: number, v: number) => { if (v > 0 && (!best[i] || v < best[i])) best[i] = v; };
+    for (const p of ps) {
+      take(0, parseFloat(p.prices?.usd || "") || parseFloat(p.prices?.usd_foil || "") || 0);
+      const s = store.get(p.id);
+      if (s) {
+        take(1, s[0] || s[1]);
+        take(2, s[3] || s[4]);
+      }
+    }
+    out.set(o, best);
+  }
+  return out;
+}

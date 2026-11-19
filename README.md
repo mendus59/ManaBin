@@ -8,8 +8,8 @@ A free web app for tracking a Magic: The Gathering collection, with every card a
 
 - Search the full paper card library, with every printing and art variant.
 - Add the exact printing, finish, condition and language you own, sort cards into binders, and import or export ManaBox CSVs.
-- Build decks for any format, or paste one from Moxfield, Archidekt or Arena, and see which cards you already own.
-- See TCGplayer, Card Kingdom and MTGGoldfish prices for each printing, and value your collection by any of them.
+- Build decks for any format or paste one in, with a Commander builder that suggests cards from EDHREC and your own collection.
+- See TCGplayer, Card Kingdom and MTGGoldfish prices for each printing, and keep a wishlist of the cards you still need.
 - Sign in with Google to keep a private collection that syncs across devices, and share it and chosen decks with friends.
 - New sets are added automatically on release day by a daily GitHub Actions job.
 <!-- site-summary:end -->
@@ -36,6 +36,19 @@ Collections are private and stored in Firebase (Firestore), on the free Spark pl
 **Decks** lists your decks with their card count, value and how many cards you're missing. A new deck can start empty or from a pasted decklist: Moxfield, Archidekt (categories like `[Commander]` and `[Maybeboard]` are read), MTGGoldfish, MTG Arena or plain `1 Card name` lines, with Commander, Deck, Sideboard and Maybeboard sections.
 
 In a deck, add cards by name, change copies, and move cards between the commander, main deck, sideboard and maybeboard. The main deck is grouped by card type, and each card shows whether you own enough copies. Format checks cover deck size, copy limits, legality and the commander's color identity. **Copy decklist** and **Download .txt** export the list, and **Copy missing cards** gives just what you'd need to buy, ready for a store's mass entry. **Share this deck** picks the friends who can see it; they find it on their Friends page, read-only.
+
+## Commander builder
+
+Below every deck is a builder panel:
+
+- **Suggestions** (Commander, Brawl and Oathbreaker decks, once a commander is chosen):
+  - **Your collection:** cards you own in the commander's colors that are legal and not in the deck yet. They're ranked by what they share with the commander (the creature types it names, keywords, words in its text), then by EDHREC rank.
+  - **EDHREC:** what other decks with that commander play, with how often and how much more than usual (synergy). This reads EDHREC's public page data from the browser. It's unofficial, so it may stop working, and the collection suggestions don't depend on it.
+  - Both can be filtered by role (ramp, card draw, removal, board wipes, tutors, lands), guessed from rules text, and EDHREC's list can be limited to cards you own. **Add** puts a card in the deck; **Wishlist** saves one you don't own.
+- **Stats:** mana curve and average mana value, colored cost symbols against the cards that can make each color, role counts against typical Commander numbers, and Game Changers with the brackets they allow.
+- **Buy missing:** the cheapest printing of each card you're missing at TCGplayer, Card Kingdom and MTGGoldfish, each store's total, the total buying each card where it's cheapest, and a button to put them all on your wishlist.
+
+The **Wishlist** (from Decks) lists wanted cards by deck with each store's price, lets you change quantities, copies the list for a store's mass entry, and marks cards you've since added to your collection.
 
 ## Friends
 
@@ -64,7 +77,7 @@ Scryfall bulk data ──► tools/build_library.py ──► data branch ──
   - `prints/xx.json`: every printing, sharded by oracle ID and loaded when you open a card.
   - `ids/xx.json`: printing ID to card, used when importing a collection.
   - `sets.json` and `manifest.json`: set details, and what the build covers.
-- **Collections, binders, decks and friends** live in Firestore, never in the repo.
+- **Collections, binders, decks, wishlists and friends** live in Firestore, never in the repo.
 
 ## Keeping the library current
 

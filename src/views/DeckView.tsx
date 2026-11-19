@@ -12,6 +12,9 @@ import {
   type Board, type Deck, type DeckCard,
 } from "../lib/decks";
 import { download } from "../lib/transfer";
+import { canBeCommander } from "../lib/edh";
+import { today } from "../lib/collection";
+import { DeckBuilder } from "../components/DeckBuilder";
 import { useCollection } from "../state/collection";
 import { otherMember, useFriends } from "../state/friends";
 import { cardPrice, deckValue, pageShell, useLibrary } from "./DecksView";
@@ -196,6 +199,10 @@ function DeckEditor({ deck, readOnly, ownerName, back, oracles, names, owned, se
       })}
       {deck.cards.length === 0 && <p class="empty">No cards yet. Add some by name above.</p>}
 
+      <DeckBuilder deck={deck} oracles={oracles} names={names} owned={owned} readOnly={readOnly} onOpen={setOpen}
+        onAdd={(c) => setCards(addCard(deck.cards, c))}
+        onWish={(cards) => col.addToWishlist(cards.map((c) => ({ o: c.o, n: c.n, q: c.q, d: readOnly ? undefined : deck.id, a: today() }))).catch(() => {})} />
+
       <section class="deck-actions">
         <button type="button" class="ghost" disabled={!deck.cards.length} onClick={() => copy(formatDecklist(deck.cards), "list")}>
           {copied === "list" ? "Copied" : "Copy decklist"}
@@ -207,6 +214,7 @@ function DeckEditor({ deck, readOnly, ownerName, back, oracles, names, owned, se
           onClick={() => copy(formatDecklist(missing, { boards: ["main"] }), "missing")}>
           {copied === "missing" ? "Copied" : "Copy missing cards"}
         </button>
+        <a class="ghost button" href="#/wishlist">Wishlist{col.wishlist?.length ? ` (${col.wishlist.length})` : ""}</a>
         {!readOnly && (
           <button type="button" class={sure ? "ghost danger" : "ghost"} onClick={() => {
             if (!sure) return setSure(true);
@@ -240,13 +248,13 @@ function AddCard({ names, singleton, onAdd }: { names: Map<string, Card>; single
     const starts: Card[] = [], has: Card[] = [];
     const seen = new Set<string>();
     for (const [key, c] of names) {
-      if (seen.has(c.oracle_id!) || c.extra) continue;
+      if (seen.has(c.oracle_id!) || c.extra || (board === "commander" && !canBeCommander(c))) continue;
       if (key.startsWith(q)) { starts.push(c); seen.add(c.oracle_id!); }
       else if (key.includes(q)) { has.push(c); seen.add(c.oracle_id!); }
       if (starts.length >= 8) break;
     }
     return [...starts, ...has].slice(0, 8);
-  }, [text, names]);
+  }, [text, names, board]);
 
   const add = (c: Card) => {
     onAdd({ o: c.oracle_id!, n: c.name, q: singleton && board !== "maybe" ? 1 : qty, b: board });

@@ -3,7 +3,7 @@ import { createContext, type ComponentChildren } from "preact";
 import { useContext, useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { getBackend, type Account, type Backend, type Social } from "../lib/backend";
 import { entryKey, moveChanges, today, type Entries, type Entry } from "../lib/collection";
-import type { Deck } from "../lib/decks";
+import { addWishes, type Deck, type WishItem } from "../lib/decks";
 
 export interface CollectionState {
   account: Account | null;
@@ -28,6 +28,9 @@ export interface CollectionState {
   decks: Deck[] | null;
   saveDeck(deck: Deck): Promise<void>;
   deleteDeck(id: string): Promise<void>;
+  wishlist: WishItem[] | null;
+  addToWishlist(items: WishItem[]): Promise<void>;
+  setWishlist(items: WishItem[]): Promise<void>;
   importEntries(entries: Entry[], mode: "merge" | "replace"): Promise<void>;
   signIn(): Promise<string | null>;
   signOut(): Promise<void>;
@@ -51,6 +54,7 @@ export function CollectionProvider({ children }: { children: ComponentChildren }
   const [error, setError] = useState<string | null>(null);
   const [savedBinders, setSavedBinders] = useState<string[]>([]);
   const [decks, setDecks] = useState<Deck[] | null>(null);
+  const [wishlist, setWishlistState] = useState<WishItem[] | null>(null);
   const latest = useRef<Entries>(new Map());
   latest.current = entries || new Map();
 
@@ -78,10 +82,12 @@ export function CollectionProvider({ children }: { children: ComponentChildren }
   useEffect(() => {
     setSavedBinders([]);
     setDecks(null);
+    setWishlistState(null);
     if (!backend || !account) return;
+    const stopWishes = backend.watchWishlist(account.uid, setWishlistState, (e) => setError(e.message));
     const stopBinders = backend.watchBinders(account.uid, setSavedBinders, (e) => setError(e.message));
     const stopDecks = backend.watchDecks(account.uid, (d) => setDecks(d.sort((a, b) => a.name.localeCompare(b.name))), (e) => setError(e.message));
-    return () => { stopBinders(); stopDecks(); };
+    return () => { stopBinders(); stopDecks(); stopWishes(); };
   }, [backend, account?.uid]);
 
   const binders = useMemo(() => {
@@ -112,7 +118,7 @@ export function CollectionProvider({ children }: { children: ComponentChildren }
       throw e;
     };
     return {
-      account, entries, pending, error, kind: backend?.kind ?? null, binders, decks,
+      account, entries, pending, error, kind: backend?.kind ?? null, binders, decks, wishlist,
       signedOut: known && !account, backend, social: backend?.social ?? null,
       add(partial) {
         const e: Entry = { ...partial, q: partial.q ?? 1, a: today() } as Entry;
@@ -166,6 +172,14 @@ export function CollectionProvider({ children }: { children: ComponentChildren }
         const { backend: b, uid } = need();
         await b.saveDeck(uid, { ...deck, updated: new Date().toISOString() }).catch(fail);
       },
+      async addToWishlist(items) {
+        const { backend: b, uid } = need();
+        await b.setWishlist(uid, addWishes(wishlist || [], items)).catch(fail);
+      },
+      async setWishlist(items) {
+        const { backend: b, uid } = need();
+        await b.setWishlist(uid, items.filter((w) => w.q > 0)).catch(fail);
+      },
       async deleteDeck(id) {
         const { backend: b, uid } = need();
         await b.deleteDeck(uid, id).catch(fail);
@@ -187,7 +201,7 @@ export function CollectionProvider({ children }: { children: ComponentChildren }
         setError(null);
       },
     };
-  }, [backend, account, known, entries, pending, error, binders, savedBinders, decks]);
+  }, [backend, account, known, entries, pending, error, binders, savedBinders, decks, wishlist]);
 
   return <Ctx.Provider value={state}>{children}</Ctx.Provider>;
 }
