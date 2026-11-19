@@ -81,7 +81,8 @@ def download_bulk():
     CACHE.mkdir(exist_ok=True)
     path = CACHE / f"default-cards-{info['updated_at'][:19].replace(':', '')}.json"
     if not path.exists():
-        print(f"Downloading {info['size'] / 1e6:.0f} MB of card data from Scryfall")
+        size = info.get("size") or info.get("compressed_size")
+        print(f"Downloading {size / 1e6:.0f} MB of card data from Scryfall" if size else "Downloading card data from Scryfall")
         req = urllib.request.Request(info["download_uri"], headers={"User-Agent": UA})
         tmp = path.with_suffix(".part")
         with urllib.request.urlopen(req, timeout=600) as resp, open(tmp, "wb") as f:
