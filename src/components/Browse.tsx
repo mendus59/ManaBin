@@ -24,6 +24,12 @@ export interface BrowseProps {
   owned: boolean;
   setNames?: Record<string, string>;
   headerRight?: ComponentChildren;
+  /** shown above the filters, e.g. import/export buttons */
+  toolbar?: ComponentChildren;
+  /** shown instead of "No cards match" when there are no cards at all */
+  empty?: ComponentChildren;
+  /** copies owned per oracle ID, for "owned" badges in the library */
+  ownedCounts?: Map<string, number>;
   footer?: ComponentChildren;
   scope: string;
   placeholder: string;
@@ -40,12 +46,12 @@ export function Browse(props: BrowseProps) {
   const [view, setView] = useState(params.get("view") === "list" ? "list" : "grid");
   const [filterTick, setFilterTick] = useState(0);
   const [shown, setShown] = useState(PAGE_SIZE);
-  const [open, setOpen] = useState(-1);
+  const [openId, setOpenId] = useState<string | null>(null);
 
   const filtersBody = useRef<HTMLDivElement>(null);
   const filtersBox = useRef<HTMLDetailsElement>(null);
   const filters = useMemo(() => createFilters(), []);
-  const filterApi = useRef<{ clear(): void } | null>(null);
+  const filterApi = useRef<{ clear(): void; update(cards: Card[], setNames?: Record<string, string>): void } | null>(null);
   const sentinel = useRef<HTMLDivElement>(null);
   const preview = useRef<HTMLDivElement>(null);
   const searchBox = useRef<HTMLInputElement>(null);
@@ -58,7 +64,11 @@ export function Browse(props: BrowseProps) {
     // Start with the panel collapsed on phones unless the link already has filters applied.
     if (matchMedia("(max-width: 700px)").matches && !filters.activeCount()) filtersBox.current!.open = false;
     setFilterTick((t) => t + 1);
-  }, [cards]);
+  }, []);
+  const firstCards = useRef(cards);
+  useEffect(() => {
+    if (cards !== firstCards.current) filterApi.current?.update(cards, props.setNames);
+  }, [cards, props.setNames]);
 
   // Debounce typing so big searches don't run on every keystroke.
   useEffect(() => {
@@ -71,7 +81,9 @@ export function Browse(props: BrowseProps) {
     const order = compiled.order || sort;
     const effectiveDir = compiled.dir || dir || (SORTS as any)[order].dir;
     const filterTest = filters.predicate();
-    const list = sortCards(cards.filter((c: Card) => compiled.test(c) && filterTest(c)), order, effectiveDir) as Card[];
+    // Like Scryfall, the library hides tokens, emblems and other extras unless the search asks for them.
+    const extras = owned || /\binclude:extras\b|\b(is|t|type):(token|emblem|extra)\b/i.test(query);
+    const list = sortCards(cards.filter((c: Card) => (extras || !c.extra) && compiled.test(c) && filterTest(c)), order, effectiveDir) as Card[];
     return { list, order, effectiveDir, warnings: compiled.warnings as string[] };
   }, [cards, query, sort, dir, filterTick]);
 
@@ -100,27 +112,34 @@ export function Browse(props: BrowseProps) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (open < 0 && e.key === "/" && document.activeElement !== searchBox.current) {
+      if (!openId && e.key === "/" && document.activeElement !== searchBox.current) {
         e.preventDefault();
         searchBox.current!.focus();
       }
     };
     addEventListener("keydown", onKey);
     return () => removeEventListener("keydown", onKey);
-  }, [open]);
+  }, [openId]);
 
   const { list } = result;
+  // Track the open card by ID, so it stays put when the list changes underneath it.
+  const open = openId ? list.findIndex((c) => c.id === openId) : -1;
+  const setOpen = (i: number | ((i: number) => number)) => {
+    const n = typeof i === "function" ? i(open) : i;
+    setOpenId(n >= 0 && list[n] ? list[n].id : null);
+  };
   const page = list.slice(0, shown);
   const nFilters = filters.activeCount();
 
-  let status = `${list.length.toLocaleString()} of ${cards.length.toLocaleString()} cards`;
+  const total = owned ? cards.length : cards.reduce((n, c) => n + (c.extra ? 0 : 1), 0);
+  let status = `${list.length.toLocaleString()} of ${total.toLocaleString()} cards`;
   if (owned) {
     const copies = (cs: Card[]) => cs.reduce((n, c) => n + (c.owned?.qty || 0), 0);
     status = list.length === cards.length
       ? `${cards.length.toLocaleString()} cards (${copies(cards).toLocaleString()} copies)`
       : `${status} (${copies(list).toLocaleString()} copies) · ${dollars(list.reduce((n, c) => n + ownedValue(c), 0))}`;
-  } else if (list.length === cards.length) {
-    status = `${cards.length.toLocaleString()} cards`;
+  } else if (list.length === total) {
+    status = `${total.toLocaleString()} cards`;
   }
 
   const runExample = (q: string) => { setInput(q); setQuery(q); };
@@ -189,6 +208,7 @@ export function Browse(props: BrowseProps) {
       </header>
 
       <main class="wrap">
+        {props.toolbar}
         <details ref={filtersBox} class="filters" open>
           <summary>
             <span class="ftitle">Filters <span class="count">{nFilters || ""}</span></span>
@@ -198,10 +218,12 @@ export function Browse(props: BrowseProps) {
           <div ref={filtersBody} class="filters-body" />
         </details>
 
-        {!list.length && <p class="empty">No cards match that search.</p>}
+        {!list.length && (cards.length || !props.empty ? <p class="empty">No cards match that search.</p> : props.empty)}
         {list.length > 0 && view === "grid" && (
           <div class="grid">
-            {page.map((c, i) => <Tile key={c.id} card={c} owned={owned} onOpen={() => setOpen(i)} />)}
+            {page.map((c, i) => (
+              <Tile key={c.id} card={c} owned={owned} have={c.oracle_id ? props.ownedCounts?.get(c.oracle_id) : 0} onOpen={() => setOpen(i)} />
+            ))}
           </div>
         )}
         {list.length > 0 && view === "list" && (
@@ -250,7 +272,7 @@ export function Browse(props: BrowseProps) {
   );
 }
 
-function Tile({ card: c, owned, onOpen }: { card: Card; owned: boolean; onOpen: () => void }) {
+function Tile({ card: c, owned, have, onOpen }: { card: Card; owned: boolean; have?: number; onOpen: () => void }) {
   const [face, setFace] = useState(0);
   const imgs = images(c, "normal");
   const o = c.owned;
@@ -263,7 +285,7 @@ function Tile({ card: c, owned, onOpen }: { card: Card; owned: boolean; onOpen: 
         {owned && o && o.qty > 1 && <span class="badge">×{o.qty}</span>}
         {owned && o && o.foil > 0 && <span class="badge foil">{o.foil < o.qty ? o.foil + " " : ""}Foil</span>}
         {owned && o && o.etched > 0 && <span class="badge foil">Etched</span>}
-        {!owned && (c.prints || 0) > 1 && <span class="badge" title={`${c.prints} printings`}>{c.prints} prints</span>}
+        {!owned && have ? <span class="badge have" title={`You own ${have}`}>Own {have}</span> : null}
       </div>
       {imgs.length > 1 && (
         <button type="button" class="flip" title="Flip card" aria-label="Flip card" onClick={() => setFace((f) => f + 1)}>⟲</button>

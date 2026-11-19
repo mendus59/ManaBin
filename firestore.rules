@@ -1,0 +1,28 @@
+rules_version = '2';
+// Firestore security rules for ManaBin. Paste into Firebase console → Firestore Database → Rules.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+
+    // Private data: users/{uid}/collection/{0-f}, and later binders, decks, wishlist.
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
+
+      match /{sub=**} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    // Optional public copy of a collection or deck that the owner chose to share.
+    match /shared/{uid}/{doc=**} {
+      allow read: if true;
+      allow write: if isOwner(uid);
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

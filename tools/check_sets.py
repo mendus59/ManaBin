@@ -21,7 +21,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from build_library import SKIP_SET_TYPES, get  # noqa: E402
+from build_library import EXTRA_SET_TYPES, SKIP_SET_TYPES, get  # noqa: E402
 
 REFRESH_DAYS = 30
 
@@ -29,7 +29,8 @@ REFRESH_DAYS = 30
 def decide(manifest, sets, today, force=False):
     """Returns (rebuild, reasons, released_new, upcoming)."""
     iso = today.isoformat()
-    paper = [s for s in sets if not s.get("digital") and s.get("set_type") not in SKIP_SET_TYPES]
+    # Token and other extra sets don't trigger a rebuild on their own; they come along with their main set.
+    paper = [s for s in sets if not s.get("digital") and s.get("set_type") not in SKIP_SET_TYPES | EXTRA_SET_TYPES]
     upcoming = sorted((s for s in paper if (s.get("released_at") or "") > iso), key=lambda s: s["released_at"])
     reasons = []
     if force:

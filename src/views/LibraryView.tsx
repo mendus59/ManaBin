@@ -4,12 +4,16 @@ import { useEffect, useMemo, useState } from "preact/hooks";
 import { Browse } from "../components/Browse";
 import { loadLibrary, type Library } from "../lib/data";
 import { prepare } from "../lib/search.js";
+import { ownedByOracle } from "../lib/collection";
+import { useCollection } from "../state/collection";
 
 const day = (d: string) => new Date(d).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 
 export function LibraryView({ nav }: { nav: ComponentChildren }) {
   const [lib, setLib] = useState<Library | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { entries } = useCollection();
+  const ownedCounts = useMemo(() => (entries ? ownedByOracle(entries) : undefined), [entries]);
 
   useEffect(() => {
     loadLibrary()
@@ -52,6 +56,7 @@ export function LibraryView({ nav }: { nav: ComponentChildren }) {
       title="the card library"
       cards={lib.cards}
       owned={false}
+      ownedCounts={ownedCounts}
       setNames={setNames}
       scope="every Magic card printed on paper"
       placeholder="Search every card, e.g.  t:dragon c:r mv<=5"

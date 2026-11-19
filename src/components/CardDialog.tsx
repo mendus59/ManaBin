@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { cap, images, scryfallUrl, type Card, type CardFace, type Printing } from "../lib/cards";
 import { loadPrintings } from "../lib/data";
+import { AddToCollection } from "./AddToCollection";
 import { Symbols } from "./Symbols";
 
 const LEGAL_FORMATS = ["standard", "pioneer", "modern", "legacy", "vintage", "commander", "pauper", "brawl", "historic", "timeless"];
@@ -162,6 +163,14 @@ export function CardDialog({ card: c, owned, setNames, onClose, onStep, hasPrev,
               </ul>
             </details>
           )}
+
+          <AddToCollection
+            printingId={shown.id}
+            oracleId={c.oracle_id}
+            finishes={shown.finishes}
+            lang={shown.lang}
+            label={`${shown.set.toUpperCase()} #${shown.collector_number}`}
+          />
 
           <div class="dlg-nav">
             <button type="button" class="ghost" disabled={!hasPrev} onClick={() => onStep(-1)}>← Prev</button>

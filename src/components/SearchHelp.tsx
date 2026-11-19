@@ -14,6 +14,7 @@ const ROWS: [string[], string][] = [
   [['a:"rebecca guay"', "ft:/dragon/", "wm:selesnya"], "Artist, flavor text, watermark"],
   [["usd>5", "year>=2020", "date<2010-01-01"], "Price, release year/date"],
   [["is:foil", "is:commander", "is:mdfc", "is:showcase"], "Card properties (also not:)"],
+  [["include:extras", "t:token"], "Show tokens, emblems and art cards in the library"],
   [["qty>=2"], "Copies owned (collections only)"],
   [["order:usd", "dir:desc"], "Sort from the search box"],
 ];

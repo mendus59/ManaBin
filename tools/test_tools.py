@@ -64,8 +64,9 @@ class BuildTests(unittest.TestCase):
             out = Path(tmp) / "out"
             m = build_library.build(bulk, [], out, "2026-11-18")
             lib = json.loads((out / "cards.json").read_text())
-            self.assertEqual(m["cards"], 1)
-            self.assertEqual(m["printings"], 3)
+            self.assertEqual(m["cards"], 2)  # Bolt, plus the token as an extra; the digital card is dropped
+            self.assertEqual(m["printings"], 4)
+            self.assertEqual([c["name"] for c in lib if c.get("extra")], ["Token"])
             bolt = lib[0]
             self.assertEqual(bolt["set"], "m11")  # newest regular printing, not the promo
             self.assertEqual(bolt["print_sets"], ["lea", "m11", "sld"])
@@ -74,6 +75,7 @@ class BuildTests(unittest.TestCase):
             prints = json.loads((out / "prints" / "ab.json").read_text())[oid]
             self.assertEqual([p["set"] for p in prints], ["sld", "m11", "lea"])
             self.assertEqual(prints[0]["img"], "f")
+            self.assertEqual(json.loads((out / "ids" / "3.json").read_text()), {"3": oid})
 
 
 if __name__ == "__main__":
