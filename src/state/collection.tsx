@@ -1,11 +1,15 @@
 // App-wide collection state: the signed-in account, its entries, and the actions that change them.
 import { createContext, type ComponentChildren } from "preact";
 import { useContext, useEffect, useMemo, useRef, useState } from "preact/hooks";
-import { getBackend, type Account, type Backend } from "../lib/backend";
+import { getBackend, type Account, type Backend, type Social } from "../lib/backend";
 import { entryKey, today, type Entries, type Entry } from "../lib/collection";
 
 export interface CollectionState {
   account: Account | null;
+  /** true once we know nobody is signed in (guest accounts are off, so Google sign-in is needed) */
+  signedOut: boolean;
+  backend: Backend | null;
+  social: Social | null;
   entries: Entries | null;
   /** local changes not yet saved to the server */
   pending: boolean;
@@ -30,6 +34,7 @@ export function useCollection(): CollectionState {
 export function CollectionProvider({ children }: { children: ComponentChildren }) {
   const [backend, setBackend] = useState<Backend | null>(null);
   const [account, setAccount] = useState<Account | null>(null);
+  const [known, setKnown] = useState(false);
   const [entries, setEntries] = useState<Entries | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,27 +46,36 @@ export function CollectionProvider({ children }: { children: ComponentChildren }
     getBackend()
       .then((b) => {
         setBackend(b);
-        stop = b.onAccount((a) => setAccount(a), (e) => setError(e.message));
+        stop = b.onAccount((a) => {
+          // Token refreshes call back with the same account; only a real change re-renders.
+          setAccount((cur) => (cur && a && cur.uid === a.uid && cur.isAnonymous === a.isAnonymous && cur.name === a.name ? cur : a));
+          setKnown(true);
+        }, (e) => setError(e.message));
       })
       .catch((e) => setError(`Couldn't start saving: ${e.message || e}`));
     return () => stop();
   }, []);
 
   useEffect(() => {
-    if (!backend || !account) return;
+    if (!backend || !account) { setEntries(null); return; }
     setEntries(null);
     return backend.subscribe(account.uid, (e, p) => { setEntries(e); setPending(p); }, (e) => setError(e.message));
   }, [backend, account?.uid]);
 
   const state = useMemo<CollectionState>(() => {
     const write = (set: Entry[], remove: string[]) => {
-      if (!backend || !account) return Promise.reject(new Error("Not ready yet"));
+      if (!backend || !account) {
+        const e = new Error(known ? "Sign in with Google to save cards to your collection." : "Still connecting. Try again in a moment.");
+        setError(e.message);
+        return Promise.reject(e);
+      }
       const p = backend.write(account.uid, { set, remove });
       p.catch((e) => setError(e.message));
       return p;
     };
     return {
       account, entries, pending, error, kind: backend?.kind ?? null,
+      signedOut: known && !account, backend, social: backend?.social ?? null,
       add(partial) {
         const e: Entry = { ...partial, q: partial.q ?? 1, a: today() } as Entry;
         const cur = latest.current.get(entryKey(e));
@@ -105,7 +119,7 @@ export function CollectionProvider({ children }: { children: ComponentChildren }
         setError(null);
       },
     };
-  }, [backend, account, entries, pending, error]);
+  }, [backend, account, known, entries, pending, error]);
 
   return <Ctx.Provider value={state}>{children}</Ctx.Provider>;
 }

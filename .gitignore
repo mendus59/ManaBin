@@ -1,4 +1,4 @@
-# ManaBox exports include purchase prices and binder names; only public/shared/collection.json is published.
+# ManaBox exports include purchase prices and binder names; keep them out of the repo.
 *.csv
 
 __pycache__/

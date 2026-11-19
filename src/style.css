@@ -356,3 +356,25 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.7); }
 .mode { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
 .error { color: #f0846a; }
 .ok { color: #8fd19e; }
+
+/* ---------- friends ---------- */
+a.ghost.button { display: inline-block; text-decoration: none; color: var(--text); }
+.ghost.danger { border-color: #f0846a; color: #f0846a; }
+.sign-in-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; }
+.friends { padding-top: 16px; padding-bottom: 40px; }
+.friends-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 14px; align-items: start; }
+.friends-grid > .wide, .friends-grid > .error { grid-column: 1 / -1; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 18px; min-width: 0; }
+.panel h2 { font-size: 1.05rem; margin: 0 0 10px; }
+.panel p { margin: 0 0 10px; }
+.friend-code { font: 600 1.8rem ui-monospace, Consolas, monospace; letter-spacing: 0.18em; color: var(--accent); }
+.add-friend { display: flex; gap: 8px; }
+.add-friend input { flex: 1 1 auto; min-width: 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; font-family: ui-monospace, Consolas, monospace; letter-spacing: 0.1em; }
+.found { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.people { list-style: none; margin: 0 0 10px; padding: 0; }
+.people li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 0; border-top: 1px solid var(--line); }
+.people li:first-child { border-top: 0; }
+.who { flex: 1 1 160px; min-width: 0; }
+.people .actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.avatar { width: 32px; height: 32px; border-radius: 50%; flex: none; display: inline-grid; place-items: center; background: var(--panel-2); color: var(--muted); font-weight: 600; object-fit: cover; }
+.switch { display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; cursor: pointer; }

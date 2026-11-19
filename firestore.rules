@@ -5,17 +5,81 @@ service cloud.firestore {
 
     function signedIn() { return request.auth != null; }
     function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+    // Friends need a Google account, not a guest account.
+    function hasGoogle() { return signedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous'; }
+    // Friendship document IDs are the two user IDs, sorted, joined by "_".
+    function pairId(a, b) { return a < b ? a + '_' + b : b + '_' + a; }
 
-    // Private data: users/{uid}/collection/{0-f}, and later binders, decks, wishlist.
+    // Private data: users/{uid}/collection/{0-f}, users/{uid}/sharing/collection, and later
+    // binders, decks and wishlists. Only the owner reads or writes it...
     match /users/{uid} {
       allow read, write: if isOwner(uid);
 
       match /{sub=**} {
         allow read, write: if isOwner(uid);
       }
+
+      // ...except that friends the owner lists in sharing/collection may read the collection.
+      match /collection/{shard} {
+        allow read: if hasGoogle()
+          && request.auth.uid in get(/databases/$(database)/documents/users/$(uid)/sharing/collection).data.viewers
+          && exists(/databases/$(database)/documents/friendships/$(pairId(uid, request.auth.uid)));
+      }
+
+      // Decks (Phase 4) are shared one by one, with the friends listed on the deck.
+      match /decks/{deck} {
+        allow read: if hasGoogle() && request.auth.uid in resource.data.get('sharedWith', []);
+      }
     }
 
-    // Optional public copy of a collection or deck that the owner chose to share.
+    // Public profile: name, photo and friend code. Never the email address.
+    match /profiles/{uid} {
+      allow read: if hasGoogle();
+      allow create, update: if isOwner(uid) && hasGoogle()
+        && request.resource.data.keys().hasOnly(['name', 'photo', 'code', 'created'])
+        && request.resource.data.name is string && request.resource.data.name.size() <= 80;
+      allow delete: if isOwner(uid);
+    }
+
+    // Friend codes: anyone signed in with Google can look one up; you can claim a free one.
+    match /codes/{code} {
+      allow read: if hasGoogle();
+      allow create: if hasGoogle() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid']) && code.matches('^[A-Z2-9]{6}$');
+      allow delete: if hasGoogle() && resource.data.uid == request.auth.uid;
+    }
+
+    // Friendships, with the two user IDs sorted and joined by "_" as the document ID.
+    match /friendships/{id} {
+      function members() { return resource.data.members; }
+      function isMember() { return hasGoogle() && request.auth.uid in members(); }
+      function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
+
+      allow read: if isMember();
+
+      // A request: sent by one member, pending, with the two IDs in order.
+      allow create: if hasGoogle()
+        && request.resource.data.from == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.members.size() == 2
+        && request.auth.uid in request.resource.data.members
+        && request.resource.data.members[0] < request.resource.data.members[1]
+        && id == pairId(request.resource.data.members[0], request.resource.data.members[1]);
+
+      // Accepting: only the person the request was sent to, changing only the status.
+      // Sharing: each member may change only their own entry in `sharing`, once accepted.
+      allow update: if isMember() && (
+        (changed().hasOnly(['status']) && request.resource.data.status == 'accepted'
+          && resource.data.status == 'pending' && request.auth.uid != resource.data.from)
+        || (changed().hasOnly(['sharing']) && resource.data.status == 'accepted'
+          && request.resource.data.sharing.diff(resource.data.get('sharing', {})).affectedKeys().hasOnly([request.auth.uid]))
+      );
+
+      // Either member can decline, cancel or unfriend.
+      allow delete: if isMember();
+    }
+
+    // Optional public copies of a collection or deck, readable by anyone with the link.
     match /shared/{uid}/{doc=**} {
       allow read: if true;
       allow write: if isOwner(uid);

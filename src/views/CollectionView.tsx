@@ -1,19 +1,41 @@
-// The signed-in user's own collection: every printing they own, with import and export.
+// A collection: your own (with import and export), or a friend's that they share with you (read-only).
 import type { ComponentChildren } from "preact";
 import { useEffect, useMemo, useState } from "preact/hooks";
 import { Browse } from "../components/Browse";
 import { ImportDialog } from "../components/ImportDialog";
 import { dollars, ownedValue, type Card, type Printing } from "../lib/cards";
-import { collectionCards, totalCopies } from "../lib/collection";
+import { collectionCards, totalCopies, type Entries } from "../lib/collection";
 import { loadLibrary, loadPrintings, type Library } from "../lib/data";
 import { prepare } from "../lib/search.js";
 import { collectionCsv, download, makeBackup } from "../lib/transfer";
+import { SignInPrompt } from "../components/SignInPrompt";
 import { useCollection } from "../state/collection";
+import { useFriends } from "../state/friends";
 
 const stamp = () => new Date().toISOString().slice(0, 10);
 
-export function CollectionView({ nav }: { nav: ComponentChildren }) {
+/** A friend's collection, live, while they share it with you. */
+function useFriendEntries(uid: string | undefined) {
+  const { backend, account } = useCollection();
+  const [entries, setEntries] = useState<Entries | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    setEntries(null);
+    setError(null);
+    if (!uid || !backend || !account || account.isAnonymous) return;
+    return backend.subscribe(uid, (e) => setEntries(e), (e) => setError(e.message));
+  }, [uid, backend, account?.uid]);
+  return { entries, error };
+}
+
+export function CollectionView({ nav, friendUid }: { nav: ComponentChildren; friendUid?: string }) {
   const col = useCollection();
+  const friend = useFriendEntries(friendUid);
+  const { friendships } = useFriends();
+  const friendship = friendUid ? friendships?.find((f) => f.status === "accepted" && f.members.includes(friendUid)) : undefined;
+  const friendName = friendship?.names[friendUid!] || "Your friend";
+  const entries = friendUid ? friend.entries : col.entries;
+  const loadError = friendUid ? friend.error : col.error;
   const [lib, setLib] = useState<Library | null>(null);
   const [libError, setLibError] = useState<string | null>(null);
   const [printings, setPrintings] = useState<Map<string, Printing[]>>(new Map());
@@ -32,8 +54,8 @@ export function CollectionView({ nav }: { nav: ComponentChildren }) {
 
   // Load the printings of every card owned (cached, so only new cards cost a request).
   useEffect(() => {
-    if (!col.entries) return;
-    const need = [...new Set([...col.entries.values()].map((e) => e.o))].filter((o) => !printings.has(o));
+    if (!entries) return;
+    const need = [...new Set([...entries.values()].map((e) => e.o))].filter((o) => !printings.has(o));
     if (!need.length) return;
     let live = true;
     Promise.all(need.map(async (o) => [o, await loadPrintings(o)] as const)).then((loaded) => {
@@ -45,18 +67,18 @@ export function CollectionView({ nav }: { nav: ComponentChildren }) {
       });
     });
     return () => { live = false; };
-  }, [col.entries]);
+  }, [entries]);
 
   const cards = useMemo<Card[] | null>(() => {
-    if (!lib || !col.entries) return null;
-    const list = collectionCards(col.entries, oracles, printings, setNames);
+    if (!lib || !entries) return null;
+    const list = collectionCards(entries, oracles, printings, setNames);
     list.forEach((c) => prepare(c));
     return list;
-  }, [lib, col.entries, printings, oracles]);
+  }, [lib, entries, printings, oracles]);
 
   const byPrinting = useMemo(() => new Map((cards || []).map((c) => [c.id, c])), [cards]);
   const value = useMemo(() => (cards || []).reduce((n, c) => n + ownedValue(c), 0), [cards]);
-  const loadingPrintings = !!col.entries && [...col.entries.values()].some((e) => !printings.has(e.o));
+  const loadingPrintings = !!entries && [...entries.values()].some((e) => !printings.has(e.o));
 
   const header = (body: ComponentChildren) => (
     <>
@@ -73,29 +95,63 @@ export function CollectionView({ nav }: { nav: ComponentChildren }) {
       </div>,
     );
   }
+  if (col.signedOut || (friendUid && col.account?.isAnonymous)) {
+    return header(<SignInPrompt why={friendUid ? "Sign in with Google to see collections your friends share with you." : "Sign in with Google to keep a collection, import a ManaBox CSV, and use it on any device."} />);
+  }
+  if (friendUid && friendships && !friendship?.sharing?.[friendUid]) {
+    return header(
+      <div class="notice">
+        <p><strong>{friendship ? `${friendName} isn't sharing their collection with you.` : "This person isn't on your friends list."}</strong></p>
+        <p><a href="#/friends">Back to friends</a></p>
+      </div>,
+    );
+  }
   if (!cards) {
     return header(
-      col.error && !col.entries
-        ? <div class="notice"><p><strong>Your collection couldn't be loaded.</strong></p><p>{col.error}</p></div>
-        : <p class="empty">Loading your collection…</p>,
+      loadError && !entries
+        ? <div class="notice"><p><strong>{friendUid ? `${friendName}'s collection couldn't be loaded.` : "Your collection couldn't be loaded."}</strong></p><p>{loadError}</p></div>
+        : <p class="empty">{friendUid ? `Loading ${friendName}'s collection…` : "Loading your collection…"}</p>,
     );
   }
 
-  const n = totalCopies(col.entries!);
+  const n = totalCopies(entries!);
+  const counts = (
+    <span class="muted">
+      {n.toLocaleString()} card{n === 1 ? "" : "s"} · {entries!.size.toLocaleString()} line{entries!.size === 1 ? "" : "s"}
+      {loadingPrintings && " · loading card details…"}
+    </span>
+  );
+
+  if (friendUid) {
+    return (
+      <Browse
+        nav={nav}
+        title={`${friendName}'s collection`}
+        cards={cards}
+        owned={true}
+        setNames={setNames}
+        scope={`${friendName}'s collection`}
+        placeholder={`Search ${friendName}'s collection, e.g.  t:dragon c:r mv<=5`}
+        examples={["t:legendary t:creature", "is:foil order:usd", "qty>=4", "usd>10"]}
+        headerRight={<p class="total" title="TCGplayer market price for each copy owned">Total value <strong>{dollars(value)}</strong></p>}
+        toolbar={<div class="toolbar">{counts}<span class="actions"><a class="ghost button" href="#/friends">Back to friends</a></span></div>}
+        empty={<div class="notice empty-collection"><p><strong>{friendName}'s collection is empty.</strong></p></div>}
+        footer={<p>Shared with you by {friendName}. Prices are TCGplayer market prices via Scryfall.</p>}
+      />
+    );
+  }
+
   const toolbar = (
     <div class="toolbar">
-      <span class="muted">
-        {n.toLocaleString()} card{n === 1 ? "" : "s"} · {col.entries!.size.toLocaleString()} line{col.entries!.size === 1 ? "" : "s"}
-        {loadingPrintings && " · loading card details…"}
-      </span>
+      {counts}
       <span class="actions">
         <button type="button" class="ghost" onClick={() => setImporting(true)}>Import</button>
         <button type="button" class="ghost" disabled={!n}
-          onClick={() => download(`manabin-collection-${stamp()}.csv`, collectionCsv(col.entries!.values(), byPrinting), "text/csv")}>
+          onClick={() => download(`manabin-collection-${stamp()}.csv`, collectionCsv(entries!.values(), byPrinting), "text/csv")}>
           Export CSV
         </button>
         <button type="button" class="ghost" disabled={!n}
-          onClick={() => download(`manabin-backup-${stamp()}.json`, JSON.stringify(makeBackup(col.entries!.values())), "application/json")}>
+          onClick={() => download(`manabin-backup-${stamp()}.json`, JSON.stringify(makeBackup(entries!.values())), "application/json")}>
           Back up (JSON)
         </button>
       </span>

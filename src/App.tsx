@@ -1,20 +1,24 @@
 import { useEffect, useState } from "preact/hooks";
 import { AccountButton } from "./components/AccountButton";
-import { SHARED_COLLECTION_NAME } from "./config";
 import { CollectionProvider, useCollection } from "./state/collection";
 import { CollectionView } from "./views/CollectionView";
+import { FriendsView } from "./views/FriendsView";
 import { LibraryView } from "./views/LibraryView";
-import { SharedView } from "./views/SharedView";
 
-const ROUTES = ["library", "collection", "shared"] as const;
+const ROUTES = ["library", "collection", "friends"] as const;
 type Route = (typeof ROUTES)[number];
 
-// Links from before ManaBin (the collection viewer) had a search in the query string and no hash,
-// so those still open the shared collection.
-function readRoute(): Route {
-  const hash = location.hash.replace(/^#\/?/, "");
-  if ((ROUTES as readonly string[]).includes(hash)) return hash as Route;
-  return location.search ? "shared" : "library";
+/**
+ * The section, plus what follows it:
+ *   #/friends/add/CODE   adds a friend from their invite link
+ *   #/friends/<uid>      a friend's shared collection
+ */
+interface Place { route: Route; rest: string[] }
+
+function readPlace(): Place {
+  const [head, ...rest] = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
+  if ((ROUTES as readonly string[]).includes(head)) return { route: head as Route, rest: rest.map(decodeURIComponent) };
+  return { route: "library", rest: [] };
 }
 
 export function App() {
@@ -26,15 +30,16 @@ export function App() {
 }
 
 function Shell() {
-  const [route, setRoute] = useState<Route>(readRoute);
+  const [place, setPlace] = useState<Place>(readPlace);
   const col = useCollection();
+  const route = place.route;
 
   useEffect(() => {
-    // Always name the section in the URL, so a shared library search doesn't open the collection.
-    if (!new RegExp(`^#/(${ROUTES.join("|")})$`).test(location.hash)) {
+    // Always name the section in the URL, so a shared library search doesn't open another section.
+    if (!new RegExp(`^#/(${ROUTES.join("|")})(/|$)`).test(location.hash)) {
       history.replaceState(null, "", location.pathname + location.search + "#/" + route);
     }
-    const onHash = () => setRoute(readRoute());
+    const onHash = () => setPlace(readPlace());
     addEventListener("hashchange", onHash);
     return () => removeEventListener("hashchange", onHash);
   }, []);
@@ -42,9 +47,9 @@ function Shell() {
   // Switching sections starts a fresh search; the query string belongs to the section it was made in.
   const go = (to: Route) => (e: Event) => {
     e.preventDefault();
-    if (to === route) return;
+    if (to === route && !place.rest.length) return;
     history.pushState(null, "", location.pathname + "#/" + to);
-    setRoute(to);
+    setPlace({ route: to, rest: [] });
   };
 
   const tab = (to: Route, label: string) => (
@@ -55,11 +60,14 @@ function Shell() {
       <nav class="tabs" aria-label="Sections">
         {tab("library", "Card library")}
         {tab("collection", "My collection")}
-        {tab("shared", SHARED_COLLECTION_NAME)}
+        {col.kind !== "memory" && tab("friends", "Friends")}
       </nav>
       <AccountButton />
     </>
   );
+
+  const friendUid = route === "friends" && place.rest[0] && place.rest[0] !== "add" ? place.rest[0] : null;
+  const addCode = route === "friends" && place.rest[0] === "add" ? place.rest[1] || "" : "";
 
   return (
     <>
@@ -71,7 +79,8 @@ function Shell() {
       )}
       {route === "library" && <LibraryView key="library" nav={nav} />}
       {route === "collection" && <CollectionView key="collection" nav={nav} />}
-      {route === "shared" && <SharedView key="shared" nav={nav} />}
+      {route === "friends" && !friendUid && <FriendsView key="friends" nav={nav} addCode={addCode} />}
+      {friendUid && <CollectionView key={`friend-${friendUid}`} nav={nav} friendUid={friendUid} />}
     </>
   );
 }

@@ -6,7 +6,7 @@ on:
     branches: [main]
     paths: ["src/**", "public/**", "index.html", "package.json", "package-lock.json", "vite.config.ts", "tsconfig.json", ".github/workflows/pages.yml"]
   workflow_dispatch:
-  workflow_call:  # used by library.yml and prices.yml after they update data
+  workflow_call:  # used by library.yml after it updates data
 
 permissions:
   contents: read
@@ -26,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main  # the branch tip, so a call from prices.yml gets its new commit
+          ref: main  # the branch tip
       - name: Add the card library
         run: |
           mkdir -p public/library

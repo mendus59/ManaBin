@@ -24,12 +24,6 @@ export interface Library {
   sets: Map<string, SetInfo>;
 }
 
-export interface SharedCollection {
-  generated?: string;
-  prices_updated?: string;
-  cards: Card[];
-}
-
 let library: Promise<Library> | null = null;
 
 /** The full card library (built by tools/build_library.py). Cached after the first call. */
@@ -72,15 +66,6 @@ export async function loadPrintings(oracleId: string): Promise<Printing[]> {
   } catch {
     return [];
   }
-}
-
-let shared: Promise<SharedCollection> | null = null;
-
-/** The published collection (public/shared/collection.json, built from a ManaBox export). */
-export function loadShared(): Promise<SharedCollection> {
-  shared ??= getJson<SharedCollection>("shared/collection.json");
-  shared.catch(() => { shared = null; });
-  return shared;
 }
 
 const idShards = new Map<string, Promise<Record<string, string>>>();
