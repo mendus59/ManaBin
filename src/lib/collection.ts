@@ -108,3 +108,25 @@ export function entriesFor(entries: Entries, printingId: string): [string, Entry
   const order = (e: Entry) => `${["nonfoil", "foil", "etched"].indexOf(e.f)}${CONDITIONS.findIndex(([c]) => c === e.c)}${e.l}${e.b || ""}`;
   return [...entries].filter(([, e]) => e.p === printingId).sort((a, b) => order(a[1]).localeCompare(order(b[1])));
 }
+
+/** The writes that move entries to a binder (undefined = no binder), joining entries that end up the same. */
+export function moveChanges(entries: Entries, keys: string[], binder: string | undefined): { set: Entry[]; remove: string[] } {
+  const next = new Map(entries);
+  const touched = new Set<string>();
+  const removed = new Set<string>();
+  for (const k of keys) {
+    const e = next.get(k);
+    if (!e || (e.b || undefined) === binder) continue;
+    next.delete(k);
+    removed.add(k);
+    const moved: Entry = { ...e, b: binder };
+    const nk = entryKey(moved);
+    const cur = next.get(nk);
+    next.set(nk, cur ? { ...cur, q: cur.q + moved.q } : moved);
+    touched.add(nk);
+  }
+  return {
+    set: [...touched].filter((k) => next.has(k)).map((k) => next.get(k)!),
+    remove: [...removed].filter((k) => !next.has(k)),
+  };
+}

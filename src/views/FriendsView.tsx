@@ -5,6 +5,7 @@ import { SignInPrompt } from "../components/SignInPrompt";
 import type { Friendship, Profile } from "../lib/backend";
 import { useCollection } from "../state/collection";
 import { otherMember, useFriends } from "../state/friends";
+import { useSharedDecks } from "./DeckView";
 
 const inviteLink = (code: string) => `${location.origin}${location.pathname}#/friends/add/${code}`;
 
@@ -111,12 +112,13 @@ function Friends({ uid, addCode }: { uid: string; addCode: string }) {
                     <ShareToggle on={iShare} disabled={!!busy} onChange={(on) => act(f.id, () => social.setSharing(f, uid, on))()} />
                     <RemoveButton disabled={!!busy} onRemove={act(f.id, () => social.remove(f, uid))} />
                   </span>
+                  <FriendDecks friend={other} />
                 </li>
               );
             })}
           </ul>
         )}
-        <p class="muted small">Decks can be shared with friends one by one once decks arrive.</p>
+        <p class="muted small">To share a deck, open it on the <a href="#/decks">Decks</a> page and pick the friends who can see it.</p>
       </section>
 
       {outgoing.length > 0 && (
@@ -259,5 +261,19 @@ function ShareToggle({ on, disabled, onChange }: { on: boolean; disabled: boolea
         }} />
       Share my collection
     </label>
+  );
+}
+
+/** Links to the decks a friend shares with you. */
+function FriendDecks({ friend }: { friend: string }) {
+  const { decks } = useSharedDecks(friend);
+  if (!decks?.length) return null;
+  return (
+    <p class="friend-decks">
+      <span class="muted small">Decks:</span>{" "}
+      {decks.map((d, i) => (
+        <span key={d.id}>{i > 0 && ", "}<a href={`#/friends/${encodeURIComponent(friend)}/decks/${d.id}`}>{d.name}</a></span>
+      ))}
+    </p>
   );
 }

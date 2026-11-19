@@ -7,11 +7,11 @@
 A free web app for tracking a Magic: The Gathering collection, with every card and printing and Scryfall-style search.
 
 - Search the full paper card library, with every printing and art variant.
+- Add the exact printing, finish, condition and language you own, sort cards into binders, and import or export ManaBox CSVs.
+- Build decks for any format, or paste one from Moxfield, Archidekt or Arena, and see which cards you already own.
 - See TCGplayer, Card Kingdom and MTGGoldfish prices for each printing, and value your collection by any of them.
-- Add the exact printing, finish, condition and language you own, import a ManaBox CSV, or export a CSV or backup.
-- Sign in with Google to keep a private collection that syncs across devices and works offline.
+- Sign in with Google to keep a private collection that syncs across devices, and share it and chosen decks with friends.
 - New sets are added automatically on release day by a daily GitHub Actions job.
-- Add friends with a friend code or invite link, and choose who can see your collection.
 <!-- site-summary:end -->
 
 ManaBin started as [manabox-viewer](https://github.com/mendus59/manabox-viewer). It is growing into a full collection manager: binders, decks, an EDH deck builder that knows what you own, and card scanning on phones.
@@ -27,9 +27,19 @@ Collections are private and stored in Firebase (Firestore), on the free Spark pl
 - Firestore keeps a copy on the device, so the collection works offline and syncs when you're back online.
 - A collection is stored as 16 documents (by printing ID), so loading one costs 16 reads however big it is.
 
+## Binders
+
+**My collection** has a **Binder** menu: all cards, cards in no binder, or one binder. **New binder** makes one; choose a binder in the card dialog to add cards straight into it, or change an owned copy's binder there. **Move the cards shown** moves everything the current search and filters show, so `s:mh3` plus a move files a whole set at once. Deleting a binder keeps its cards, in no binder. ManaBox CSV imports keep their binder names, and the CSV export follows the binder you're looking at.
+
+## Decks
+
+**Decks** lists your decks with their card count, value and how many cards you're missing. A new deck can start empty or from a pasted decklist: Moxfield, Archidekt (categories like `[Commander]` and `[Maybeboard]` are read), MTGGoldfish, MTG Arena or plain `1 Card name` lines, with Commander, Deck, Sideboard and Maybeboard sections.
+
+In a deck, add cards by name, change copies, and move cards between the commander, main deck, sideboard and maybeboard. The main deck is grouped by card type, and each card shows whether you own enough copies. Format checks cover deck size, copy limits, legality and the commander's color identity. **Copy decklist** and **Download .txt** export the list, and **Copy missing cards** gives just what you'd need to buy, ready for a store's mass entry. **Share this deck** picks the friends who can see it; they find it on their Friends page, read-only.
+
 ## Friends
 
-**Friends** shows your friend code and an invite link (`#/friends/add/CODE`). A friend enters your code or opens the link and sends a request, and you accept it. For each friend you choose whether they may see your collection; when a friend shares theirs, **View collection** opens it read-only, with the same search and filters. Friends see your Google name and picture, never your email. Removing a friend also stops sharing your collection with them. Decks will be shareable with chosen friends the same way when decks arrive.
+**Friends** shows your friend code and an invite link (`#/friends/add/CODE`). A friend enters your code or opens the link and sends a request, and you accept it. For each friend you choose whether they may see your collection; when a friend shares theirs, **View collection** opens it read-only, with the same search and filters. Friends see your Google name and picture, never your email. Removing a friend also stops sharing your collection and decks with them. Decks are shared one by one, from each deck's page.
 
 ## Firebase
 
@@ -54,7 +64,7 @@ Scryfall bulk data ──► tools/build_library.py ──► data branch ──
   - `prints/xx.json`: every printing, sharded by oracle ID and loaded when you open a card.
   - `ids/xx.json`: printing ID to card, used when importing a collection.
   - `sets.json` and `manifest.json`: set details, and what the build covers.
-- **Collections and friends** live in Firestore, never in the repo.
+- **Collections, binders, decks and friends** live in Firestore, never in the repo.
 
 ## Keeping the library current
 

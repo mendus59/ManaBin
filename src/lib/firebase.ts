@@ -7,6 +7,8 @@
 //   profiles/{uid}                 { name, photo, code }      what friends see (never the email)
 //   codes/{code}                   { uid }                    friend codes
 //   friendships/{uidA_uidB}        Friendship (uids sorted)
+//   users/{uid}/meta/binders       { names: [...] }           binder names, including empty ones
+//   users/{uid}/decks/{id}         Deck (without id)          sharedWith: friends who may read it
 // Entries are spread over 16 documents by the first hex digit of the printing ID, so loading
 // a collection costs 16 document reads however many cards it holds.
 import { initializeApp } from "firebase/app";
@@ -15,12 +17,13 @@ import {
   signInWithCredential, signInWithPopup, signOut, type AuthError, type User,
 } from "firebase/auth";
 import {
-  arrayRemove, arrayUnion, collection, connectFirestoreEmulator, deleteDoc, deleteField, doc, getDoc,
+  arrayRemove, arrayUnion, collection, connectFirestoreEmulator, deleteDoc, deleteField, doc, getDoc, getDocs,
   initializeFirestore, memoryLocalCache, onSnapshot, persistentLocalCache, persistentMultipleTabManager,
   query, serverTimestamp, setDoc, updateDoc, where, writeBatch,
 } from "firebase/firestore";
 import type { Account, Backend, Changes, Friendship, Profile, Social } from "./backend";
 import { entryKey, shardOf, type Entries, type Entry } from "./collection";
+import type { Deck } from "./decks";
 
 // A Firebase web config is public by design: it identifies the project. Access is controlled
 // by firestore.rules and by the authorized domains set in the Firebase console.
@@ -183,8 +186,10 @@ export function firebaseBackend(): Backend {
 
     async remove(f, me) {
       const other = f.members.find((m) => m !== me)!;
-      // Stop sharing my collection with them before the friendship goes.
+      // Stop sharing my collection and decks with them before the friendship goes.
       await setDoc(doc(db, "users", me, "sharing", "collection"), { viewers: arrayRemove(other) }, { merge: true });
+      const shared = await getDocs(query(collection(db, "users", me, "decks"), where("sharedWith", "array-contains", other)));
+      await Promise.all(shared.docs.map((d) => updateDoc(d.ref, { sharedWith: arrayRemove(other) })));
       await deleteDoc(doc(db, "friendships", f.id)).catch((e) => { throw friendly(e); });
     },
 
@@ -255,5 +260,47 @@ export function firebaseBackend(): Backend {
     },
 
     write,
+
+    watchBinders(uid, cb, onError) {
+      return onSnapshot(doc(db, "users", uid, "meta", "binders"), (snap) => {
+        cb(((snap.data()?.names as string[]) || []).filter((n) => typeof n === "string"));
+      }, (e) => onError(friendly(e)));
+    },
+
+    async setBinders(uid, names) {
+      await setDoc(doc(db, "users", uid, "meta", "binders"), { names }).catch((e) => { throw friendly(e); });
+    },
+
+    watchDecks(uid, cb, onError) {
+      return onSnapshot(collection(db, "users", uid, "decks"), (snap) => {
+        cb(snap.docs.map((d) => toDeck(d.id, d.data())));
+      }, (e) => onError(friendly(e)));
+    },
+
+    watchSharedDecks(owner, me, cb, onError) {
+      return onSnapshot(query(collection(db, "users", owner, "decks"), where("sharedWith", "array-contains", me)), (snap) => {
+        cb(snap.docs.map((d) => toDeck(d.id, d.data())));
+      }, (e) => onError(friendly(e)));
+    },
+
+    async saveDeck(uid, deck) {
+      const { id, ...data } = deck;
+      // Resolves once the server has it; the local cache (and the UI) update right away.
+      await setDoc(doc(db, "users", uid, "decks", id), data).catch((e) => { throw friendly(e); });
+    },
+
+    async deleteDeck(uid, id) {
+      await deleteDoc(doc(db, "users", uid, "decks", id)).catch((e) => { throw friendly(e); });
+    },
   };
 }
+
+const toDeck = (id: string, d: Record<string, unknown>): Deck => ({
+  id,
+  name: String(d.name || "Untitled deck"),
+  format: String(d.format ?? ""),
+  cards: Array.isArray(d.cards) ? (d.cards as Deck["cards"]) : [],
+  sharedWith: Array.isArray(d.sharedWith) ? (d.sharedWith as string[]) : [],
+  notes: typeof d.notes === "string" ? d.notes : undefined,
+  updated: String(d.updated || ""),
+});

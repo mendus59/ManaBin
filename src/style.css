@@ -379,3 +379,58 @@ a.ghost.button { display: inline-block; text-decoration: none; color: var(--text
 .avatar { width: 32px; height: 32px; border-radius: 50%; flex: none; display: inline-grid; place-items: center; background: var(--panel-2); color: var(--muted); font-weight: 600; object-fit: cover; }
 .switch { display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; cursor: pointer; }
 .source { display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; }
+
+/* ---------- binders ---------- */
+.binders, .move-shown { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
+.inline-form { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.inline-form input, .deck-form input, .deck-form textarea, .add-card input, .deck-title {
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 6px 9px; color: var(--text); font: inherit; min-width: 0;
+}
+.entry-binder { max-width: 9em; font-size: 0.82rem; padding: 2px 4px; }
+.entries li .what { flex: 1 1 auto; }
+
+/* ---------- decks ---------- */
+.decks { padding-top: 14px; padding-bottom: 40px; }
+.page-title { font-size: 1.25rem; margin: 0; }
+.deck-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.deck-list a { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; padding: 12px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); color: var(--text); text-decoration: none; }
+.deck-list a:hover { border-color: var(--muted); }
+.deck-name { font-weight: 600; font-size: 1.05rem; }
+.deck-stats { margin-left: auto; display: inline-flex; gap: 12px; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+.missing { color: #f0a46a; }
+.deck-form { display: flex; flex-direction: column; gap: 10px; }
+.deck-form label { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; }
+.deck-form textarea { font-family: ui-monospace, Consolas, monospace; font-size: 0.85rem; resize: vertical; }
+.dlg-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.crumbs { margin: 0 0 8px; font-size: 0.9rem; }
+.deck-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px; }
+.deck-title { font-size: 1.25rem; font-weight: 600; flex: 1 1 260px; }
+.deck-summary { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-bottom: 10px; font-variant-numeric: tabular-nums; }
+.deck-problems { margin: 0 0 12px; padding: 10px 14px 10px 30px; background: rgba(240, 164, 106, 0.08); border: 1px solid rgba(240, 164, 106, 0.4); border-radius: var(--radius); font-size: 0.9rem; }
+.add-card { position: relative; margin-bottom: 16px; max-width: 640px; }
+.add-row { display: flex; gap: 6px; }
+.add-row input[type="number"] { width: 4em; flex: none; }
+.add-row input:not([type]) { flex: 1 1 auto; }
+.suggestions { list-style: none; margin: 4px 0 0; padding: 4px; position: absolute; left: 0; right: 0; z-index: 20; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5); }
+.suggestions button { width: 100%; text-align: left; background: none; border: 0; color: var(--text); padding: 6px 8px; border-radius: 6px; }
+.suggestions button:hover, .suggestions button:focus { background: var(--panel-2); }
+.board { margin-bottom: 16px; }
+.board h3 { font-size: 1rem; margin: 0 0 6px; }
+.group h4 { font-size: 0.9rem; margin: 10px 0 4px; color: var(--muted); font-weight: 600; }
+.deck-cards { list-style: none; margin: 0; padding: 0; columns: 2 420px; column-gap: 24px; }
+.deck-cards li { break-inside: avoid; display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 0.92rem; border-bottom: 1px solid var(--line); }
+.deck-cards .card-name { flex: 1 1 auto; min-width: 0; text-align: left; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.92rem; }
+.deck-cards .q { min-width: 1.4em; text-align: right; font-variant-numeric: tabular-nums; }
+.deck-cards .own { font-size: 0.78rem; white-space: nowrap; }
+.deck-cards li.have .own { color: #8fd19e; }
+.deck-cards li.partial .own { color: #e8c46a; }
+.deck-cards li.need .own { color: #f0a46a; }
+.deck-cards .price { font-variant-numeric: tabular-nums; font-size: 0.82rem; color: var(--muted); min-width: 4.2em; text-align: right; }
+.deck-cards .move { font-size: 0.78rem; padding: 2px 4px; max-width: 7.5em; }
+.deck-cards .cost { white-space: nowrap; }
+.deck-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+.share-deck { max-width: 520px; }
+.friend-decks { flex-basis: 100%; margin: 2px 0 0 42px; font-size: 0.88rem; }
+@media (max-width: 560px) {
+  .deck-cards .price, .deck-cards .cost { display: none; }
+}
