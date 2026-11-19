@@ -36,10 +36,14 @@ export function pageShell(nav: ComponentChildren, body: ComponentChildren, cls =
   );
 }
 
-export function DecksView({ nav }: { nav: ComponentChildren }) {
+export function DecksView({ nav, startNew }: { nav: ComponentChildren; startNew?: boolean }) {
   const col = useCollection();
   const { oracles, names, error } = useLibrary();
-  const [dialog, setDialog] = useState(false);
+  const [dialog, setDialog] = useState(!!startNew);
+  // #/decks/new opens the dialog once; the address goes back to the deck list.
+  useEffect(() => {
+    if (startNew) history.replaceState(null, "", location.pathname + "#/decks");
+  }, []);
   const owned = useMemo(() => (col.entries ? ownedByOracle(col.entries) : new Map<string, number>()), [col.entries]);
 
   if (col.signedOut) return pageShell(nav, <SignInPrompt why="Sign in with Google to build decks and share them with friends." />);

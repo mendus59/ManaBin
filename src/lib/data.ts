@@ -24,6 +24,14 @@ export interface Library {
   sets: Map<string, SetInfo>;
 }
 
+let manifest: Promise<Manifest | null> | null = null;
+
+/** Just the library's manifest (counts, build time, newest set), or null if it isn't built. */
+export function loadManifest(): Promise<Manifest | null> {
+  manifest ??= getJson<Manifest>("library/manifest.json").catch(() => null);
+  return manifest;
+}
+
 let library: Promise<Library> | null = null;
 
 /** The full card library (built by tools/build_library.py). Cached after the first call. */

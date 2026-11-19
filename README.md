@@ -6,19 +6,29 @@
      See CLAUDE.md ("Site summary"). -->
 A free web app for tracking a Magic: The Gathering collection, with every card and printing and Scryfall-style search.
 
-- Search the full paper card library, with every printing and art variant, updated on each set's release day.
+- Open to a dashboard of your collection's value, its price change over the week, recent additions, decks and binders.
+- Browse the full paper card library, with every printing and art variant, updated on each set's release day.
 - Install it on a phone and scan cards with the camera, then fix printing, finish or condition and save them to a binder.
 - Add the exact printing, finish, condition and language you own, sort cards into binders, and import or export ManaBox CSVs.
 - Build decks for any format or paste one in, with a Commander builder that suggests cards from EDHREC and your own collection.
-- See TCGplayer, Card Kingdom and MTGGoldfish prices for each printing, and keep a wishlist of the cards you still need.
-- Sign in with Google to keep a private collection that syncs across devices, and share it and chosen decks with friends.
+- Sign in with Google to sync across devices, compare prices from three stores, keep a wishlist and share with friends.
 <!-- site-summary:end -->
 
 ManaBin started as [manabox-viewer](https://github.com/mendus59/manabox-viewer). It is now a full collection manager: binders, decks, an EDH deck builder that knows what you own, and card scanning on phones.
 
+## Home
+
+ManaBin opens on **Home**. Visitors who aren't signed in get a short tour of what ManaBin does, a **Sign in with Google** button and a card search that needs no account. Once you have an account, Home becomes a dashboard:
+
+- **Quick actions** for Scan cards, Add a card, New deck and Import CSV.
+- **Collection value**, priced with the store you picked on My collection, and how much it changed since the price update about a week earlier. The change only counts cards you owned then, so adding cards never shows as a gain. Earlier prices are remembered on each device, so the change appears after the next daily price update on that device.
+- **Recently added** cards, the **biggest price moves** among the cards you own, your most recently changed **decks** (with value and cards missing) and each **binder**'s card count and value.
+
+The full list of every card is the **Browse** tab.
+
 ## Your collection
 
-Open any card in the **Card library**, pick the exact printing from its list of printings, and add it with its finish, condition, language and quantity. **My collection** shows everything you own with its value, and searches and filters the same way as the library. It can import a ManaBox CSV export (keeping each card's printing, finish, condition, language, purchase price and binder) and export a ManaBox-compatible CSV or a JSON backup.
+Open any card in **Browse**, pick the exact printing from its list of printings, and add it with its finish, condition, language and quantity. **My collection** shows everything you own with its value, and searches and filters the same way as the library. It can import a ManaBox CSV export (keeping each card's printing, finish, condition, language, purchase price and binder) and export a ManaBox-compatible CSV or a JSON backup.
 
 Collections are private and stored in Firebase (Firestore), on the free Spark plan:
 
