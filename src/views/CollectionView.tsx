@@ -6,7 +6,7 @@ import { ImportDialog } from "../components/ImportDialog";
 import { dollars, ownedValue, type Card, type Printing } from "../lib/cards";
 import { collectionCards, totalCopies, type Entries } from "../lib/collection";
 import { loadLibrary, loadPriceManifest, loadPrintings, loadStorePrices, type Library } from "../lib/data";
-import { SOURCES, withSource, type PriceSource } from "../lib/prices";
+import { SOURCES, saveSource, savedSource, withSource, type PriceSource } from "../lib/prices";
 import { prepare } from "../lib/search.js";
 import { collectionCsv, download, makeBackup } from "../lib/transfer";
 import { SignInPrompt } from "../components/SignInPrompt";
@@ -15,15 +15,6 @@ import { useCollection } from "../state/collection";
 import { useFriends } from "../state/friends";
 
 const stamp = () => new Date().toISOString().slice(0, 10);
-
-const SOURCE_KEY = "manabin-price-source";
-function savedSource(): PriceSource {
-  try {
-    const s = localStorage.getItem(SOURCE_KEY);
-    if (SOURCES.some(([k]) => k === s)) return s as PriceSource;
-  } catch { /* storage blocked */ }
-  return "highest";
-}
 
 /** A friend's collection, live, while they share it with you. */
 function useFriendEntries(uid: string | undefined) {
@@ -63,7 +54,7 @@ export function CollectionView({ nav, friendUid }: { nav: ComponentChildren; fri
   }, []);
   const pickSource = (s: PriceSource) => {
     setSource(s);
-    try { localStorage.setItem(SOURCE_KEY, s); } catch { /* private window: keep it for this visit */ }
+    saveSource(s);
   };
   const sourceName = SOURCES.find(([s]) => s === source)![1];
   const sourcePicker = (
@@ -230,7 +221,7 @@ export function CollectionView({ nav, friendUid }: { nav: ComponentChildren; fri
         ) : (
           <div class="notice empty-collection">
             <p><strong>Your collection is empty.</strong></p>
-            <p>Open any card in the <a href="#/library">Card library</a> and add the exact printing you own, or import a ManaBox CSV export.</p>
+            <p>Open any card in the <a href="#/library">Browse</a> and add the exact printing you own, or import a ManaBox CSV export.</p>
             <button type="button" class="primary" onClick={() => setImporting(true)}>Import a ManaBox CSV</button>
           </div>
         )}

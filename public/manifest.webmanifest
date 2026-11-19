@@ -2,7 +2,7 @@
   "name": "ManaBin",
   "short_name": "ManaBin",
   "description": "Your Magic: The Gathering collection, decks and card scanner.",
-  "start_url": "./#/collection",
+  "start_url": "./#/home",
   "scope": "./",
   "display": "standalone",
   "background_color": "#121417",

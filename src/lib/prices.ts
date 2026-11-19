@@ -13,6 +13,21 @@ export const SOURCES = [
 ] as const;
 export type PriceSource = (typeof SOURCES)[number][0];
 
+const SOURCE_KEY = "manabin-price-source";
+
+/** The price source chosen on My collection, remembered in this browser. */
+export function savedSource(): PriceSource {
+  try {
+    const s = localStorage.getItem(SOURCE_KEY);
+    if (SOURCES.some(([k]) => k === s)) return s as PriceSource;
+  } catch { /* storage blocked */ }
+  return "highest";
+}
+
+export function saveSource(s: PriceSource) {
+  try { localStorage.setItem(SOURCE_KEY, s); } catch { /* private window: keep it for this visit */ }
+}
+
 export const FINISH_KEYS = ["usd", "usd_foil", "usd_etched"] as const;
 
 /** Each store's USD price for one printing, by finish (nonfoil, foil, etched). */

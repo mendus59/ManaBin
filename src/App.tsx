@@ -8,12 +8,16 @@ import { FriendsView } from "./views/FriendsView";
 import { ScanView } from "./views/ScanView";
 import { WishlistView } from "./views/WishlistView";
 import { LibraryView } from "./views/LibraryView";
+import { HomeView } from "./views/HomeView";
 
-const ROUTES = ["library", "collection", "scan", "decks", "wishlist", "friends"] as const;
+const ROUTES = ["home", "library", "collection", "scan", "decks", "wishlist", "friends"] as const;
 type Route = (typeof ROUTES)[number];
 
 /**
  * The section, plus what follows it:
+ *   #/home               the welcome page, or your dashboard once signed in
+ *   #/library            every card (the Browse tab)
+ *   #/decks/new          your decks, with the new-deck dialog open
  *   #/friends/add/CODE   adds a friend from their invite link
  *   #/friends/<uid>      a friend's shared collection
  *   #/friends/<uid>/decks/<id>  a deck a friend shares with you
@@ -26,7 +30,8 @@ interface Place { route: Route; rest: string[] }
 function readPlace(): Place {
   const [head, ...rest] = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
   if ((ROUTES as readonly string[]).includes(head)) return { route: head as Route, rest: rest.map(decodeURIComponent) };
-  return { route: "library", rest: [] };
+  // An old shared search link (?q=… with no section) still opens the card library.
+  return { route: new URLSearchParams(location.search).has("q") ? "library" : "home", rest: [] };
 }
 
 export function App() {
@@ -66,7 +71,8 @@ function Shell() {
   const nav = (
     <>
       <nav class="tabs" aria-label="Sections">
-        {tab("library", "Card library")}
+        {tab("home", "Home")}
+        {tab("library", "Browse")}
         {tab("collection", "My collection")}
         {tab("scan", "Scan")}
         {tab("decks", "Decks")}
@@ -78,7 +84,8 @@ function Shell() {
 
   const friendUid = route === "friends" && place.rest[0] && place.rest[0] !== "add" ? place.rest[0] : null;
   const friendDeck = friendUid && place.rest[1] === "decks" ? place.rest[2] || null : null;
-  const deckId = route === "decks" ? place.rest[0] || null : null;
+  const newDeck = route === "decks" && place.rest[0] === "new";
+  const deckId = route === "decks" && !newDeck ? place.rest[0] || null : null;
   const addCode = route === "friends" && place.rest[0] === "add" ? place.rest[1] || "" : "";
 
   return (
@@ -89,12 +96,13 @@ function Shell() {
           <button type="button" class="linkish" onClick={col.dismissError}>Dismiss</button>
         </div>
       )}
+      {route === "home" && <HomeView key="home" nav={nav} />}
       {route === "library" && <LibraryView key="library" nav={nav} />}
       {route === "collection" && <CollectionView key="collection" nav={nav} />}
       {route === "friends" && !friendUid && <FriendsView key="friends" nav={nav} addCode={addCode} />}
       {friendUid && !friendDeck && <CollectionView key={`friend-${friendUid}`} nav={nav} friendUid={friendUid} />}
       {friendUid && friendDeck && <DeckView key={`fdeck-${friendDeck}`} nav={nav} id={friendDeck} owner={friendUid} />}
-      {route === "decks" && !deckId && <DecksView key="decks" nav={nav} />}
+      {route === "decks" && !deckId && <DecksView key={newDeck ? "decks-new" : "decks"} nav={nav} startNew={newDeck} />}
       {deckId && <DeckView key={`deck-${deckId}`} nav={nav} id={deckId} />}
       {route === "wishlist" && <WishlistView key="wishlist" nav={nav} />}
       {route === "scan" && <ScanView key="scan" nav={nav} />}
