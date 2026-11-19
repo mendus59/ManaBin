@@ -9,6 +9,8 @@ and writes slim, static JSON files the site loads:
     <out>/sets.json        every set with its name, type, release date, icon and size
     <out>/prints/xx.json   every printing, sharded by the first two hex digits of the
                            card's oracle ID, loaded when you open a card
+    <out>/ids/xx.json      printing ID -> oracle ID, sharded by the first two hex digits of
+                           the printing ID, used to import collections that list printings
 
     python tools/build_library.py                          # download and build into public/library
     python tools/build_library.py --bulk default-cards.json --sets sets.json   # offline
@@ -32,9 +34,12 @@ DEFAULT_OUT = ROOT / "public" / "library"
 CACHE = ROOT / ".cache"
 UA = "manabin/1.0 (+https://github.com/mendus59/manabox-viewer)"
 
-# Printings that aren't collectible paper Magic cards are left out of the library.
-SKIP_LAYOUTS = {"token", "double_faced_token", "emblem", "art_series"}
-SKIP_SET_TYPES = {"token", "memorabilia", "minigame", "alchemy"}
+# Digital-only printings are left out of the library. Tokens, emblems, art cards and other
+# extras are kept, so collections that hold them import fully, but marked `extra` so search
+# hides them unless asked (like Scryfall's include:extras).
+SKIP_SET_TYPES = {"alchemy"}
+EXTRA_LAYOUTS = {"token", "double_faced_token", "emblem", "art_series"}
+EXTRA_SET_TYPES = {"token", "memorabilia", "minigame"}
 
 # Oracle-level fields (the same on every printing).
 ORACLE_FIELDS = [
@@ -114,8 +119,7 @@ def image_kind(card):
 
 def keep(card):
     return (
-        card.get("layout") not in SKIP_LAYOUTS
-        and card.get("set_type") not in SKIP_SET_TYPES
+        card.get("set_type") not in SKIP_SET_TYPES
         and not card.get("digital")
         and "paper" in (card.get("games") or ["paper"])
     )
@@ -157,6 +161,8 @@ def build(bulk_path, sets_api, out, bulk_updated):
         if oid not in oracles:
             o = pick(card, ORACLE_FIELDS)
             o["oracle_id"] = oid
+            if card.get("layout") in EXTRA_LAYOUTS or card.get("set_type") in EXTRA_SET_TYPES:
+                o["extra"] = True
             if faces:
                 o["card_faces"] = [pick(f, FACE_FIELDS) for f in faces]
             o["legalities"] = {k: v for k, v in (card.get("legalities") or {}).items() if v != "not_legal"}
@@ -193,6 +199,7 @@ def build(bulk_path, sets_api, out, bulk_updated):
 
     cards = []
     shards = defaultdict(dict)
+    ids = defaultdict(dict)
     for oid, o in oracles.items():
         ps = prints[oid]
         best = max(ps, key=lambda p: face_score({**p, "_img": p.get("img"), "lang": p.get("lang", "en")}))
@@ -211,15 +218,17 @@ def build(bulk_path, sets_api, out, bulk_updated):
         cards.append(card)
         for p in ps:
             p.pop("_set_type", None)
+            ids[p["id"][:2]][p["id"]] = oid
         ps.sort(key=lambda p: (p.get("released_at", ""), p["set"], p["collector_number"]), reverse=True)
         shards[oid[:2]][oid] = ps
 
     cards.sort(key=lambda c: c["name"])
 
     out.mkdir(parents=True, exist_ok=True)
-    (out / "prints").mkdir(exist_ok=True)
-    for old in (out / "prints").glob("*.json"):
-        old.unlink()
+    for sub in ("prints", "ids"):
+        (out / sub).mkdir(exist_ok=True)
+        for old in (out / sub).glob("*.json"):
+            old.unlink()
 
     def write(path, data):
         path.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
@@ -229,6 +238,8 @@ def build(bulk_path, sets_api, out, bulk_updated):
     write(out / "sets.json", sets)
     for prefix, data in shards.items():
         size += write(out / "prints" / f"{prefix}.json", data)
+    for prefix, data in ids.items():
+        size += write(out / "ids" / f"{prefix}.json", data)
 
     # A set counts as covered once it has been out for two days, so a set released today is
     # checked again tomorrow in case Scryfall's bulk file hadn't picked it up yet.

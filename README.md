@@ -4,16 +4,36 @@
 <!-- This section is this project's card on https://mendus59.github.io and is copied there daily.
      Keep it true of what's on main: one plain-text summary line (max 160 characters), then 1-6 short bullets.
      See CLAUDE.md ("Site summary"). -->
-A free web app for browsing every Magic: The Gathering card and sharing a collection, with Scryfall-style search.
+A free web app for tracking a Magic: The Gathering collection, with every card and printing and Scryfall-style search.
 
 - Search the full paper card library, with every printing and art variant and its price.
+- Add the exact printing, finish, condition and language you own, or import a ManaBox CSV export.
+- Your collection syncs across devices when you sign in with Google, and works offline.
 - New sets are added automatically on release day by a daily GitHub Actions job.
-- Browse a shared collection built from a ManaBox export, with its total value.
-- Prices for the shared collection refresh weekly from TCGplayer, Card Kingdom and MTGGoldfish.
-- Runs entirely in the browser on GitHub Pages, with no server or account.
+- Export your collection as a ManaBox-compatible CSV or a JSON backup at any time.
+- Browse a shared collection, with prices from TCGplayer, Card Kingdom and MTGGoldfish.
 <!-- site-summary:end -->
 
-ManaBin started as [manabox-viewer](https://github.com/mendus59/manabox-viewer). It is growing into a full collection manager: binders, decks, an EDH deck builder that knows what you own, manual add by exact printing, and card scanning on phones.
+ManaBin started as [manabox-viewer](https://github.com/mendus59/manabox-viewer). It is growing into a full collection manager: binders, decks, an EDH deck builder that knows what you own, and card scanning on phones.
+
+## Your collection
+
+Open any card in the **Card library**, pick the exact printing from its list of printings, and add it with its finish, condition, language and quantity. **My collection** shows everything you own with its value, and searches and filters the same way as the library. It can import a ManaBox CSV export (keeping each card's printing, finish, condition, language, purchase price and binder) and export a ManaBox-compatible CSV or a JSON backup.
+
+Collections are stored in Firebase (Firestore), on the free Spark plan:
+
+- Each browser gets a guest account automatically, so nothing is needed to start.
+- **Sign in with Google** turns the guest account into a Google account, so the collection is safe and shows up on every device you sign in on. If that Google account already has a collection, the guest's cards are added to it.
+- Firestore keeps a copy on the device, so the collection works offline and syncs when you're back online.
+- A collection is stored as 16 documents (by printing ID), so loading one costs 16 reads however big it is.
+
+`firestore.rules` holds the security rules: each user can only read and write their own data. Firebase setup, done once in the [Firebase console](https://console.firebase.google.com/) for project `manabin-85e10`:
+
+1. **Authentication → Sign-in method:** enable **Anonymous** and **Google**.
+2. **Authentication → Settings → Authorized domains:** add `mendus59.github.io`.
+3. **Firestore Database → Rules:** paste `firestore.rules` and publish.
+
+The Firebase web config in `src/lib/firebase.ts` is public by design; access is controlled by the rules and the authorized domains. To develop without Firebase, build with `VITE_STORE=memory` and the collection is kept in the browser's local storage instead.
 
 ## How it works
 
@@ -24,9 +44,10 @@ ManaBox CSV ──► build.py ──► public/shared/collection.json ───
 ```
 
 - **The app** (`src/`) is Preact + TypeScript, built with Vite. All searching happens in the browser, so using the site never calls the Scryfall API. Card images load from Scryfall's image CDN, which Scryfall permits.
-- **The card library** is built from Scryfall's Default Cards bulk file by `tools/build_library.py`. It leaves out tokens, digital-only cards and other non-collectible printings, and writes:
+- **The card library** is built from Scryfall's Default Cards bulk file by `tools/build_library.py`. It leaves out digital-only cards, and marks tokens, emblems and art cards as extras that search hides unless you add `include:extras`. It writes:
   - `cards.json`: one entry per card (about 30k), with the rules text, legality and a representative printing.
   - `prints/xx.json`: every printing, sharded by oracle ID and loaded when you open a card.
+  - `ids/xx.json`: printing ID to card, used when importing a collection.
   - `sets.json` and `manifest.json`: set details, and what the build covers.
 - **The shared collection** (`public/shared/collection.json`) is built from a ManaBox export by `build.py`, as before.
 
@@ -47,7 +68,7 @@ Requires Node 22+ and Python 3.9+ (no Python packages).
 npm install
 python tools/build_library.py      # downloads ~500 MB from Scryfall, writes public/library/
 npm run dev                         # http://localhost:5173
-npm test                            # search engine tests
+npm test                            # search, collection and import/export tests
 python -m unittest discover tools   # library build tests
 npm run build                       # production build in dist/
 ```

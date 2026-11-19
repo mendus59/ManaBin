@@ -223,6 +223,7 @@ function isPredicate(value, ctx) {
     extendedart: (c) => (c.frame_effects || []).includes("extendedart"),
     legendary: (c) => typeHas(c, "legendary"),
     token: (c) => c.layout === "token" || typeHas(c, "token"),
+    extra: (c) => !!c.extra,
   };
   if (simple[v]) return simple[v];
   // Fall back to matching a layout, frame effect, promo type or finish (is:split, is:adventure, is:galaxyfoil...).

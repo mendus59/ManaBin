@@ -230,6 +230,13 @@ export function createFilters() {
         render(container, cards, setNames);
         onChange();
       },
+      /** Redraws the options (sets, subtypes, rarities) for a new list of cards, keeping the choices made. */
+      update(newCards, newSetNames) {
+        cards = newCards;
+        setNames = newSetNames;
+        cards.forEach((c) => c._f || prepareTypes(c));
+        if (!container.contains(document.activeElement)) render(container, cards, setNames);
+      },
     };
   }
 

@@ -82,3 +82,21 @@ export function loadShared(): Promise<SharedCollection> {
   shared.catch(() => { shared = null; });
   return shared;
 }
+
+const idShards = new Map<string, Promise<Record<string, string>>>();
+
+/** Oracle ID for each printing ID, for importing lists of printings. Unknown IDs are left out. */
+export async function lookupOracleIds(printingIds: string[]): Promise<Map<string, string>> {
+  const prefixes = [...new Set(printingIds.map((id) => id.slice(0, 2)))];
+  const out = new Map<string, string>();
+  await Promise.all(prefixes.map(async (prefix) => {
+    let shard = idShards.get(prefix);
+    if (!shard) {
+      shard = getJson<Record<string, string>>(`library/ids/${prefix}.json`).catch(() => ({}));
+      idShards.set(prefix, shard);
+    }
+    const map = await shard;
+    for (const id of printingIds) if (id.startsWith(prefix) && map[id]) out.set(id, map[id]);
+  }));
+  return out;
+}
