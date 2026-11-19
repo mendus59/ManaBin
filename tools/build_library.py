@@ -296,7 +296,9 @@ def build(bulk_path, sets_api, out, bulk_updated):
         "cards": len(cards),
         "printings": sum(len(v) for v in prints.values()),
         "sets": len(sets),
-        "newest_set": next((s["code"] for s in sets if (s.get("released_at") or "9999") <= date.today().isoformat()), None),
+        # The newest main set out today, not a token or promo set released alongside it.
+        "newest_set": next((s["code"] for s in sets if (s.get("released_at") or "9999") <= date.today().isoformat()
+                            and s.get("set_type") not in EXTRA_SET_TYPES | {"promo"}), None),
         "covered_sets": covered,
     }
     write(out / "manifest.json", manifest)
