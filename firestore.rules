@@ -10,8 +10,8 @@ service cloud.firestore {
     // Friendship document IDs are the two user IDs, sorted, joined by "_".
     function pairId(a, b) { return a < b ? a + '_' + b : b + '_' + a; }
 
-    // Private data: users/{uid}/collection/{0-f}, users/{uid}/sharing/collection, and later
-    // binders, decks and wishlists. Only the owner reads or writes it...
+    // Private data: users/{uid}/collection/{0-f}, users/{uid}/sharing/collection,
+    // users/{uid}/meta/binders and users/{uid}/decks/{id}. Only the owner reads or writes it...
     match /users/{uid} {
       allow read, write: if isOwner(uid);
 
@@ -26,9 +26,10 @@ service cloud.firestore {
           && exists(/databases/$(database)/documents/friendships/$(pairId(uid, request.auth.uid)));
       }
 
-      // Decks (Phase 4) are shared one by one, with the friends listed on the deck.
+      // Decks are shared one by one, with the friends listed on the deck.
       match /decks/{deck} {
-        allow read: if hasGoogle() && request.auth.uid in resource.data.get('sharedWith', []);
+        allow read: if hasGoogle() && request.auth.uid in resource.data.get('sharedWith', [])
+          && exists(/databases/$(database)/documents/friendships/$(pairId(uid, request.auth.uid)));
       }
     }
 

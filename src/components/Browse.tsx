@@ -26,6 +26,8 @@ export interface BrowseProps {
   headerRight?: ComponentChildren;
   /** shown above the filters, e.g. import/export buttons */
   toolbar?: ComponentChildren;
+  /** Controls that act on the cards the search currently shows (e.g. moving them to a binder). */
+  shownTools?: (shown: Card[]) => ComponentChildren;
   /** shown instead of "No cards match" when there are no cards at all */
   empty?: ComponentChildren;
   /** copies owned per oracle ID, for "owned" badges in the library */
@@ -209,6 +211,7 @@ export function Browse(props: BrowseProps) {
 
       <main class="wrap">
         {props.toolbar}
+        {props.shownTools && list.length > 0 && props.shownTools(list)}
         <details ref={filtersBox} class="filters" open>
           <summary>
             <span class="ftitle">Filters <span class="count">{nFilters || ""}</span></span>

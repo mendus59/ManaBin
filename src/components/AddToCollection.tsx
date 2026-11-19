@@ -13,6 +13,9 @@ interface Props {
   label: string;
 }
 
+// The binder picked last, so adding a run of cards to one binder doesn't mean picking it each time.
+let lastBinder = "";
+
 export function AddToCollection({ printingId, oracleId, finishes, lang, label }: Props) {
   const col = useCollection();
   const available = (finishes?.length ? finishes : ["nonfoil"]).filter((f): f is Finish => f in FINISH_LABELS);
@@ -20,6 +23,7 @@ export function AddToCollection({ printingId, oracleId, finishes, lang, label }:
   const [condition, setCondition] = useState<Condition>("NM");
   const [language, setLanguage] = useState(lang || "en");
   const [qty, setQty] = useState(1);
+  const [binder, setBinder] = useState(() => lastBinder);
   const [flash, setFlash] = useState("");
 
   // A different printing may not come in the finish that was picked.
@@ -42,7 +46,7 @@ export function AddToCollection({ printingId, oracleId, finishes, lang, label }:
 
   const add = (e: Event) => {
     e.preventDefault();
-    col.add({ p: printingId, o: oracleId, f: finish, c: condition, l: language, q: qty });
+    col.add({ p: printingId, o: oracleId, f: finish, c: condition, l: language, q: qty, b: binder || undefined });
     setFlash(`Added ${qty}`);
     setTimeout(() => setFlash(""), 1600);
   };
@@ -58,8 +62,13 @@ export function AddToCollection({ printingId, oracleId, finishes, lang, label }:
           {mine.map(([key, e]) => (
             <li key={key}>
               <span class="what">
-                {FINISH_LABELS[e.f]} · {e.c}{e.l !== "en" ? ` · ${langName(e.l)}` : ""}{e.b ? <span class="muted"> · {e.b}</span> : null}
+                {FINISH_LABELS[e.f]} · {e.c}{e.l !== "en" ? ` · ${langName(e.l)}` : ""}
               </span>
+              <select class="entry-binder" aria-label="Binder" title="Binder" value={e.b || ""}
+                onChange={(ev) => col.moveEntries([key], ev.currentTarget.value).catch(() => {})}>
+                <option value="">No binder</option>
+                {col.binders.map((b) => <option key={b} value={b}>{b}</option>)}
+              </select>
               <span class="stepper">
                 <button type="button" class="ghost" aria-label="Remove one" onClick={() => col.setQty(key, e.q - 1)}>−</button>
                 <span class="q">{e.q}</span>
@@ -79,6 +88,12 @@ export function AddToCollection({ printingId, oracleId, finishes, lang, label }:
         <select aria-label="Language" value={language} onChange={(e) => setLanguage(e.currentTarget.value)}>
           {LANGUAGES.map(([c, name]) => <option key={c} value={c}>{name}</option>)}
         </select>
+        {col.binders.length > 0 && (
+          <select aria-label="Binder to add to" value={binder} onChange={(e) => { setBinder(e.currentTarget.value); lastBinder = e.currentTarget.value; }}>
+            <option value="">No binder</option>
+            {col.binders.map((b) => <option key={b} value={b}>{b}</option>)}
+          </select>
+        )}
         <input aria-label="Quantity" type="number" min={1} max={999} inputMode="numeric" value={qty}
           onInput={(e) => setQty(Math.max(1, Math.min(999, parseInt(e.currentTarget.value, 10) || 1)))} />
         <button type="submit" class="primary">{flash || `Add ${label}`}</button>

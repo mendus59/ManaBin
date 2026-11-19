@@ -2,16 +2,20 @@ import { useEffect, useState } from "preact/hooks";
 import { AccountButton } from "./components/AccountButton";
 import { CollectionProvider, useCollection } from "./state/collection";
 import { CollectionView } from "./views/CollectionView";
+import { DecksView } from "./views/DecksView";
+import { DeckView } from "./views/DeckView";
 import { FriendsView } from "./views/FriendsView";
 import { LibraryView } from "./views/LibraryView";
 
-const ROUTES = ["library", "collection", "friends"] as const;
+const ROUTES = ["library", "collection", "decks", "friends"] as const;
 type Route = (typeof ROUTES)[number];
 
 /**
  * The section, plus what follows it:
  *   #/friends/add/CODE   adds a friend from their invite link
  *   #/friends/<uid>      a friend's shared collection
+ *   #/friends/<uid>/decks/<id>  a deck a friend shares with you
+ *   #/decks/<id>         one of your decks
  */
 interface Place { route: Route; rest: string[] }
 
@@ -60,6 +64,7 @@ function Shell() {
       <nav class="tabs" aria-label="Sections">
         {tab("library", "Card library")}
         {tab("collection", "My collection")}
+        {tab("decks", "Decks")}
         {col.kind !== "memory" && tab("friends", "Friends")}
       </nav>
       <AccountButton />
@@ -67,6 +72,8 @@ function Shell() {
   );
 
   const friendUid = route === "friends" && place.rest[0] && place.rest[0] !== "add" ? place.rest[0] : null;
+  const friendDeck = friendUid && place.rest[1] === "decks" ? place.rest[2] || null : null;
+  const deckId = route === "decks" ? place.rest[0] || null : null;
   const addCode = route === "friends" && place.rest[0] === "add" ? place.rest[1] || "" : "";
 
   return (
@@ -80,7 +87,10 @@ function Shell() {
       {route === "library" && <LibraryView key="library" nav={nav} />}
       {route === "collection" && <CollectionView key="collection" nav={nav} />}
       {route === "friends" && !friendUid && <FriendsView key="friends" nav={nav} addCode={addCode} />}
-      {friendUid && <CollectionView key={`friend-${friendUid}`} nav={nav} friendUid={friendUid} />}
+      {friendUid && !friendDeck && <CollectionView key={`friend-${friendUid}`} nav={nav} friendUid={friendUid} />}
+      {friendUid && friendDeck && <DeckView key={`fdeck-${friendDeck}`} nav={nav} id={friendDeck} owner={friendUid} />}
+      {route === "decks" && !deckId && <DecksView key="decks" nav={nav} />}
+      {deckId && <DeckView key={`deck-${deckId}`} nav={nav} id={deckId} />}
     </>
   );
 }

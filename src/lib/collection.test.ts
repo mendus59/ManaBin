@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { collectionCards, entryKey, mergeEntries, ownedByOracle, type Entry } from "./collection.ts";
+import { collectionCards, entryKey, mergeEntries, moveChanges, ownedByOracle, type Entry } from "./collection.ts";
 import { collectionCsv, parseBackup, parseCsv, parseManaBoxCsv, rowsToEntries, makeBackup } from "./transfer.ts";
 import type { Card, Printing } from "./cards";
 
@@ -62,4 +62,17 @@ test("JSON backup round-trips and rejects other files", () => {
   const entries = [e({ q: 2 }), e({ p: P2 })];
   assert.deepEqual(parseBackup(JSON.stringify(makeBackup(entries))), entries);
   assert.throws(() => parseBackup('{"cards": []}'));
+});
+
+test("moving entries to a binder joins matching entries there", () => {
+  const a = e({ q: 2 }), b = e({ q: 1, b: "Trade" }), c = e({ f: "foil" });
+  const entries = new Map([a, b, c].map((x) => [entryKey(x), x]));
+  const out = moveChanges(entries, [entryKey(a), entryKey(c)], "Trade");
+  assert.deepEqual(out.remove.sort(), [entryKey(a), entryKey(c)].sort());
+  assert.deepEqual(out.set.map((x) => `${x.f} ${x.q} ${x.b}`).sort(), ["foil 1 Trade", "nonfoil 3 Trade"]);
+  assert.deepEqual(moveChanges(entries, [entryKey(b)], "Trade"), { set: [], remove: [] });
+  // Moving back to no binder
+  const back = moveChanges(entries, [entryKey(b)], undefined);
+  assert.deepEqual(back.remove, [entryKey(b)]);
+  assert.equal(back.set[0].q, 3);
 });
