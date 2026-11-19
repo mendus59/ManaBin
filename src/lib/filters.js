@@ -1,16 +1,18 @@
 // Point-and-click filters shown above the results. They combine (AND) with the search box.
-(function () {
-  "use strict";
+import { ownedPrice } from "./search.js";
 
-  const SYMBOL = (s) => `https://svgs.scryfall.io/card-symbols/${s}.svg`;
-  const COLORS = [["W", "White"], ["U", "Blue"], ["B", "Black"], ["R", "Red"], ["G", "Green"], ["C", "Colorless"]];
-  const TYPES = ["Creature", "Instant", "Sorcery", "Artifact", "Enchantment", "Planeswalker", "Land", "Battle", "Legendary"];
-  const MANA_VALUES = ["0", "1", "2", "3", "4", "5", "6", "7+"];
-  const RARITIES = [["common", "Common"], ["uncommon", "Uncommon"], ["rare", "Rare"], ["mythic", "Mythic"], ["special", "Special"], ["bonus", "Bonus"]];
-  const FORMATS = ["commander", "standard", "pioneer", "modern", "legacy", "vintage", "pauper", "brawl", "historic", "timeless", "oathbreaker", "paupercommander", "premodern", "oldschool"];
-  const FORMAT_LABELS = { paupercommander: "Pauper Commander", oldschool: "Old School" };
-  const COLOR_MODES = [["include", "Including"], ["exact", "Exactly"], ["atmost", "At most"]];
 
+const SYMBOL = (s) => `https://svgs.scryfall.io/card-symbols/${s}.svg`;
+const COLORS = [["W", "White"], ["U", "Blue"], ["B", "Black"], ["R", "Red"], ["G", "Green"], ["C", "Colorless"]];
+const TYPES = ["Creature", "Instant", "Sorcery", "Artifact", "Enchantment", "Planeswalker", "Land", "Battle", "Legendary"];
+const MANA_VALUES = ["0", "1", "2", "3", "4", "5", "6", "7+"];
+const RARITIES = [["common", "Common"], ["uncommon", "Uncommon"], ["rare", "Rare"], ["mythic", "Mythic"], ["special", "Special"], ["bonus", "Bonus"]];
+const FORMATS = ["commander", "standard", "pioneer", "modern", "legacy", "vintage", "pauper", "brawl", "historic", "timeless", "oathbreaker", "paupercommander", "premodern", "oldschool"];
+const FORMAT_LABELS = { paupercommander: "Pauper Commander", oldschool: "Old School" };
+const COLOR_MODES = [["include", "Including"], ["exact", "Exactly"], ["atmost", "At most"]];
+
+/** Creates an independent filter panel, so the library and a collection keep their own state. */
+export function createFilters() {
   const state = {
     colors: new Set(), colorMode: "include",
     identity: new Set(), identityMode: "atmost",
@@ -66,7 +68,7 @@
       const st = state.subtype.trim().toLowerCase();
       tests.push((c) => c._f.subtypes.has(st));
     }
-    if (state.set) tests.push((c) => c.set === state.set);
+    if (state.set) tests.push((c) => c.set === state.set || (c.print_sets || []).includes(state.set));
     if (state.mv.size) {
       tests.push((c) => {
         const mv = Math.floor(c.cmc || 0);
@@ -75,12 +77,17 @@
     }
     if (state.rarity.size) tests.push((c) => state.rarity.has(c.rarity));
     if (state.format) tests.push((c) => ["legal", "restricted"].includes(c.legalities[state.format]));
-    if (state.finish === "foil") tests.push((c) => c.owned.foil + c.owned.etched > 0);
-    if (state.finish === "nonfoil") tests.push((c) => c.owned.qty > c.owned.foil + c.owned.etched);
+    const finishes = (c) => c.finishes || ["nonfoil"];
+    if (state.finish === "foil") {
+      tests.push((c) => (c.owned ? c.owned.foil + c.owned.etched > 0 : finishes(c).some((f) => f !== "nonfoil")));
+    }
+    if (state.finish === "nonfoil") {
+      tests.push((c) => (c.owned ? c.owned.qty > c.owned.foil + c.owned.etched : finishes(c).includes("nonfoil")));
+    }
     const min = parseFloat(state.priceMin), max = parseFloat(state.priceMax);
     if (!Number.isNaN(min) || !Number.isNaN(max)) {
       tests.push((c) => {
-        const p = Search.ownedPrice(c, "usd");
+        const p = ownedPrice(c, "usd");
         return p != null && (Number.isNaN(min) || p >= min) && (Number.isNaN(max) || p <= max);
       });
     }
@@ -127,12 +134,14 @@
   const colorChips = (group) => COLORS.map(([s, name]) =>
     chip(group, s, `<img class="sym" src="${SYMBOL(s)}" alt="${name}">`, name)).join("");
 
-  function render(container, cards) {
+  function render(container, cards, setNames) {
     const sets = new Map(), subtypes = new Map(), rarities = new Set();
     for (const c of cards) {
-      const s = sets.get(c.set) || { name: c.set_name, n: 0 };
-      s.n++;
-      sets.set(c.set, s);
+      for (const code of c.print_sets || [c.set]) {
+        const s = sets.get(code) || { name: (setNames && setNames[code]) || (code === c.set ? c.set_name : code), n: 0 };
+        s.n++;
+        sets.set(code, s);
+      }
       c._f.subtypeNames.forEach((t) => subtypes.set(t, (subtypes.get(t) || 0) + 1));
       rarities.add(c.rarity);
     }
@@ -189,10 +198,10 @@
       </div>`;
   }
 
-  function init({ container, cards, params, onChange }) {
-    cards.forEach(prepareTypes);
+  function init({ container, cards, params, onChange, setNames }) {
+    cards.forEach((c) => c._f || prepareTypes(c));
     readParams(params);
-    render(container, cards);
+    render(container, cards, setNames);
 
     container.addEventListener("click", (e) => {
       const b = e.target.closest(".chip");
@@ -218,11 +227,12 @@
     return {
       clear() {
         readParams(new URLSearchParams());
-        render(container, cards);
+        render(container, cards, setNames);
         onChange();
       },
     };
   }
 
-  window.Filters = { init, predicate, activeCount, writeParams };
-})();
+  return { init, predicate, activeCount, writeParams };
+
+}

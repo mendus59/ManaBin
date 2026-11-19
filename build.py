@@ -2,7 +2,7 @@
 """Build the collection data for the web app.
 
 Reads a ManaBox CSV export, looks every card up on Scryfall, and writes
-site/data/cards.js. Re-run this whenever you export a new CSV:
+public/shared/collection.json (the shared collection in the app). Re-run this whenever you export a new CSV:
 
     python build.py                        # uses ManaBox_Collection.csv
     python build.py path/to/export.csv
@@ -21,12 +21,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 DEFAULT_CSV = ROOT / "ManaBox_Collection.csv"
-OUT = ROOT / "site" / "data" / "cards.js"
+OUT = ROOT / "public" / "shared" / "collection.json"
 
 API = "https://api.scryfall.com/cards/collection"
 HEADERS = {
     # Scryfall asks API clients to send a descriptive User-Agent and Accept header.
-    "User-Agent": "patsmtg-collection-viewer/1.0",
+    "User-Agent": "manabin/1.0",
     "Accept": "application/json",
     "Content-Type": "application/json",
 }
@@ -175,8 +175,7 @@ def main():
         "cards": result,
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text("window.COLLECTION = " + json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + ";\n",
-                   encoding="utf-8")
+    OUT.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
     total = sum(c["owned"]["qty"] for c in result)
     print(f"Wrote {OUT.relative_to(ROOT)}: {len(result)} printings, {total} cards "
           f"({OUT.stat().st_size / 1024:.0f} KB)")

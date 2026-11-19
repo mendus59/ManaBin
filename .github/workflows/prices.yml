@@ -1,4 +1,4 @@
-# Refreshes card prices every week, commits site/data/cards.js, and redeploys the site.
+# Refreshes the shared collection's prices every week, commits public/shared/collection.json, and redeploys.
 name: Update prices
 
 on:
@@ -26,13 +26,13 @@ jobs:
       - run: python refresh_prices.py
       - id: commit
         run: |
-          if git diff --quiet site/data/cards.js; then
+          if git diff --quiet public/shared/collection.json; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898+github-actions[bot]@users.noreply.github.com"
-          git add site/data/cards.js
+          git add public/shared/collection.json
           git commit -m "Update card prices"
           git push
           echo "changed=true" >> "$GITHUB_OUTPUT"

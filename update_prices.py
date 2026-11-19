@@ -33,7 +33,7 @@ from build import DEFAULT_CSV, fetch_cards
 
 CK_URL = "https://api.cardkingdom.com/api/v2/pricelist"
 GOLDFISH = "https://www.mtggoldfish.com/price/"
-UA = "patsmtg-collection-viewer/1.0"
+UA = "manabin/1.0"
 GOLDFISH_DELAY = 0.75  # seconds between MTGGoldfish requests
 PRICE_RE = re.compile(r"<div class='price-box paper'>.*?price-box-price'>\$\s*([\d,]+\.\d+)", re.S)
 

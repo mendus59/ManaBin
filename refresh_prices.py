@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Refresh the prices in site/data/cards.js without the ManaBox CSV.
+"""Refresh the prices in public/shared/collection.json without the ManaBox CSV.
 
 For every printing in the site data, sets prices.usd / usd_foil / usd_etched
 to the highest current price from TCGplayer (via Scryfall), Card Kingdom and
@@ -39,8 +39,7 @@ def main():
     parser.add_argument("--no-goldfish", action="store_true", help="skip MTGGoldfish (it takes ~15 minutes)")
     args = parser.parse_args()
 
-    text = OUT.read_text(encoding="utf-8")
-    payload = json.loads(text[text.index("=") + 1:].strip().rstrip(";"))
+    payload = json.loads(OUT.read_text(encoding="utf-8"))
     cards = payload["cards"]
     print(f"Read {len(cards)} printings from {OUT.name}")
 
@@ -76,8 +75,7 @@ def main():
                 c["prices"][k] = f"{best:.2f}"
 
     payload["prices_updated"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    OUT.write_text("window.COLLECTION = " + json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + ";\n",
-                   encoding="utf-8")
+    OUT.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
     print(f"Wrote {OUT.name}: {raised} owned prices raised above TCGplayer, "
           f"{sum(1 for v in goldfish.values() if v)}/{len(goldfish)} found on MTGGoldfish")
 

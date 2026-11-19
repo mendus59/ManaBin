@@ -1,12 +1,12 @@
-# Publishes the site/ folder to GitHub Pages whenever it changes on main.
+# Builds the app and publishes it to GitHub Pages, with the card library from the `data` branch.
 name: Deploy to GitHub Pages
 
 on:
   push:
     branches: [main]
-    paths: ["site/**", ".github/workflows/pages.yml"]
+    paths: ["src/**", "public/**", "index.html", "package.json", "package-lock.json", "vite.config.ts", "tsconfig.json", ".github/workflows/pages.yml"]
   workflow_dispatch:
-  workflow_call:  # used by prices.yml after the weekly price update
+  workflow_call:  # used by library.yml and prices.yml after they update data
 
 permissions:
   contents: read
@@ -26,10 +26,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref }}  # branch tip, so a call from prices.yml gets its new commit
+          ref: main  # the branch tip, so a call from prices.yml gets its new commit
+      - name: Add the card library
+        run: |
+          mkdir -p public/library
+          if git fetch --depth 1 origin data 2>/dev/null; then
+            git archive origin/data | tar -x -C public/library
+          else
+            echo "::warning title=Card library::No data branch yet. Run the Card library workflow to build it."
+          fi
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: site
+          path: dist
       - id: deployment
         uses: actions/deploy-pages@v4
