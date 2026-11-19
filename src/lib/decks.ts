@@ -16,6 +16,28 @@ export interface DeckCard {
   p?: string;
 }
 
+/** A card you want: for a deck (`d`), or just in general. */
+export interface WishItem {
+  o: string;
+  n: string;
+  q: number;
+  /** deck ID it's wanted for */
+  d?: string;
+  /** date added, YYYY-MM-DD */
+  a: string;
+}
+
+/** Adds items to a wishlist, joining items for the same card and deck. */
+export function addWishes(list: WishItem[], add: WishItem[]): WishItem[] {
+  const out = [...list];
+  for (const w of add) {
+    const i = out.findIndex((x) => x.o === w.o && (x.d || "") === (w.d || ""));
+    if (i < 0) out.push(w);
+    else out[i] = { ...out[i], q: Math.max(out[i].q, w.q) };
+  }
+  return out;
+}
+
 export interface Deck {
   id: string;
   name: string;

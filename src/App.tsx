@@ -5,9 +5,10 @@ import { CollectionView } from "./views/CollectionView";
 import { DecksView } from "./views/DecksView";
 import { DeckView } from "./views/DeckView";
 import { FriendsView } from "./views/FriendsView";
+import { WishlistView } from "./views/WishlistView";
 import { LibraryView } from "./views/LibraryView";
 
-const ROUTES = ["library", "collection", "decks", "friends"] as const;
+const ROUTES = ["library", "collection", "decks", "wishlist", "friends"] as const;
 type Route = (typeof ROUTES)[number];
 
 /**
@@ -16,6 +17,7 @@ type Route = (typeof ROUTES)[number];
  *   #/friends/<uid>      a friend's shared collection
  *   #/friends/<uid>/decks/<id>  a deck a friend shares with you
  *   #/decks/<id>         one of your decks
+ *   #/wishlist           cards you want (no tab; linked from Decks)
  */
 interface Place { route: Route; rest: string[] }
 
@@ -57,7 +59,7 @@ function Shell() {
   };
 
   const tab = (to: Route, label: string) => (
-    <a href={`#/${to}`} class={route === to ? "on" : ""} aria-current={route === to ? "page" : undefined} onClick={go(to)}>{label}</a>
+    <a href={`#/${to}`} class={route === to || (to === "decks" && route === "wishlist") ? "on" : ""} aria-current={route === to ? "page" : undefined} onClick={go(to)}>{label}</a>
   );
   const nav = (
     <>
@@ -91,6 +93,7 @@ function Shell() {
       {friendUid && friendDeck && <DeckView key={`fdeck-${friendDeck}`} nav={nav} id={friendDeck} owner={friendUid} />}
       {route === "decks" && !deckId && <DecksView key="decks" nav={nav} />}
       {deckId && <DeckView key={`deck-${deckId}`} nav={nav} id={deckId} />}
+      {route === "wishlist" && <WishlistView key="wishlist" nav={nav} />}
     </>
   );
 }

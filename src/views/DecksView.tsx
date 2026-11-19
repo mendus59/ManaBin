@@ -51,6 +51,7 @@ export function DecksView({ nav }: { nav: ComponentChildren }) {
       <div class="toolbar">
         <h2 class="page-title">Decks</h2>
         <span class="actions">
+          <a class="ghost button" href="#/wishlist">Wishlist{col.wishlist?.length ? ` (${col.wishlist.length})` : ""}</a>
           <button type="button" class="primary" onClick={() => setDialog(true)}>New deck</button>
         </span>
       </div>

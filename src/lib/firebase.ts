@@ -8,6 +8,7 @@
 //   codes/{code}                   { uid }                    friend codes
 //   friendships/{uidA_uidB}        Friendship (uids sorted)
 //   users/{uid}/meta/binders       { names: [...] }           binder names, including empty ones
+//   users/{uid}/meta/wishlist      { items: WishItem[] }      cards wanted, maybe for a deck
 //   users/{uid}/decks/{id}         Deck (without id)          sharedWith: friends who may read it
 // Entries are spread over 16 documents by the first hex digit of the printing ID, so loading
 // a collection costs 16 document reads however many cards it holds.
@@ -23,7 +24,7 @@ import {
 } from "firebase/firestore";
 import type { Account, Backend, Changes, Friendship, Profile, Social } from "./backend";
 import { entryKey, shardOf, type Entries, type Entry } from "./collection";
-import type { Deck } from "./decks";
+import type { Deck, WishItem } from "./decks";
 
 // A Firebase web config is public by design: it identifies the project. Access is controlled
 // by firestore.rules and by the authorized domains set in the Firebase console.
@@ -287,6 +288,16 @@ export function firebaseBackend(): Backend {
       const { id, ...data } = deck;
       // Resolves once the server has it; the local cache (and the UI) update right away.
       await setDoc(doc(db, "users", uid, "decks", id), data).catch((e) => { throw friendly(e); });
+    },
+
+    watchWishlist(uid, cb, onError) {
+      return onSnapshot(doc(db, "users", uid, "meta", "wishlist"), (snap) => {
+        cb(((snap.data()?.items as WishItem[]) || []).filter((w) => w && typeof w.o === "string"));
+      }, (e) => onError(friendly(e)));
+    },
+
+    async setWishlist(uid, items) {
+      await setDoc(doc(db, "users", uid, "meta", "wishlist"), { items }).catch((e) => { throw friendly(e); });
     },
 
     async deleteDeck(uid, id) {

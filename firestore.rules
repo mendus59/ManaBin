@@ -11,7 +11,7 @@ service cloud.firestore {
     function pairId(a, b) { return a < b ? a + '_' + b : b + '_' + a; }
 
     // Private data: users/{uid}/collection/{0-f}, users/{uid}/sharing/collection,
-    // users/{uid}/meta/binders and users/{uid}/decks/{id}. Only the owner reads or writes it...
+    // users/{uid}/meta/* (binders, wishlist) and users/{uid}/decks/{id}. Only the owner reads or writes it...
     match /users/{uid} {
       allow read, write: if isOwner(uid);
 

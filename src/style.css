@@ -434,3 +434,32 @@ a.ghost.button { display: inline-block; text-decoration: none; color: var(--text
 @media (max-width: 560px) {
   .deck-cards .price, .deck-cards .cost { display: none; }
 }
+
+/* ---------- deck builder ---------- */
+.builder { margin: 18px 0; }
+.builder-tabs { display: inline-flex; margin-bottom: 12px; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); }
+.builder-tabs button.on { color: var(--text); background: var(--panel); box-shadow: inset 0 -2px 0 var(--accent); }
+.suggest-controls { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-bottom: 6px; }
+.suggest-list { list-style: none; margin: 8px 0; padding: 0; columns: 2 460px; column-gap: 24px; }
+.suggest-list li { break-inside: avoid; display: flex; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--line); font-size: 0.92rem; }
+.suggest-list .card-name { color: var(--text); text-align: left; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.92rem; }
+.suggest-list .why { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.suggest-list .own { font-size: 0.78rem; white-space: nowrap; }
+.suggest-list li.have .own { color: #8fd19e; }
+.suggest-list li.need .own { color: var(--muted); }
+.suggest-list .actions { display: inline-flex; gap: 4px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 16px 24px; }
+.stats h4 { margin: 0 0 8px; font-size: 0.95rem; }
+.curve { display: flex; align-items: flex-end; gap: 6px; height: 130px; }
+.curve .bar { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+.curve .fill { width: 100%; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 1px; }
+.curve .n { font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.curve .mv { font-size: 0.78rem; color: var(--muted); margin-top: 3px; }
+table.mini { border-collapse: collapse; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+table.mini th, table.mini td { text-align: left; padding: 3px 10px 3px 0; border-bottom: 1px solid var(--line); }
+table.mini thead th { color: var(--muted); font-weight: 600; font-size: 0.82rem; }
+.table-scroll { overflow-x: auto; max-width: 100%; }
+.buy-table td.low { color: #8fd19e; }
+.buy-table, .wish-table { min-width: 520px; }
+.wish-table .group-row th { padding-top: 12px; color: var(--muted); }
+.wish-table tr.got td:first-child::after { content: " ✓ owned"; color: #8fd19e; font-size: 0.8rem; }
