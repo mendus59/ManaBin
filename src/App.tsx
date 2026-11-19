@@ -5,10 +5,11 @@ import { CollectionView } from "./views/CollectionView";
 import { DecksView } from "./views/DecksView";
 import { DeckView } from "./views/DeckView";
 import { FriendsView } from "./views/FriendsView";
+import { ScanView } from "./views/ScanView";
 import { WishlistView } from "./views/WishlistView";
 import { LibraryView } from "./views/LibraryView";
 
-const ROUTES = ["library", "collection", "decks", "wishlist", "friends"] as const;
+const ROUTES = ["library", "collection", "scan", "decks", "wishlist", "friends"] as const;
 type Route = (typeof ROUTES)[number];
 
 /**
@@ -18,6 +19,7 @@ type Route = (typeof ROUTES)[number];
  *   #/friends/<uid>/decks/<id>  a deck a friend shares with you
  *   #/decks/<id>         one of your decks
  *   #/wishlist           cards you want (no tab; linked from Decks)
+ *   #/scan               scanning cards with the camera
  */
 interface Place { route: Route; rest: string[] }
 
@@ -66,6 +68,7 @@ function Shell() {
       <nav class="tabs" aria-label="Sections">
         {tab("library", "Card library")}
         {tab("collection", "My collection")}
+        {tab("scan", "Scan")}
         {tab("decks", "Decks")}
         {col.kind !== "memory" && tab("friends", "Friends")}
       </nav>
@@ -94,6 +97,7 @@ function Shell() {
       {route === "decks" && !deckId && <DecksView key="decks" nav={nav} />}
       {deckId && <DeckView key={`deck-${deckId}`} nav={nav} id={deckId} />}
       {route === "wishlist" && <WishlistView key="wishlist" nav={nav} />}
+      {route === "scan" && <ScanView key="scan" nav={nav} />}
     </>
   );
 }

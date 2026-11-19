@@ -6,15 +6,15 @@
      See CLAUDE.md ("Site summary"). -->
 A free web app for tracking a Magic: The Gathering collection, with every card and printing and Scryfall-style search.
 
-- Search the full paper card library, with every printing and art variant.
+- Search the full paper card library, with every printing and art variant, updated on each set's release day.
+- Install it on a phone and scan cards with the camera, then fix printing, finish or condition and save them to a binder.
 - Add the exact printing, finish, condition and language you own, sort cards into binders, and import or export ManaBox CSVs.
 - Build decks for any format or paste one in, with a Commander builder that suggests cards from EDHREC and your own collection.
 - See TCGplayer, Card Kingdom and MTGGoldfish prices for each printing, and keep a wishlist of the cards you still need.
 - Sign in with Google to keep a private collection that syncs across devices, and share it and chosen decks with friends.
-- New sets are added automatically on release day by a daily GitHub Actions job.
 <!-- site-summary:end -->
 
-ManaBin started as [manabox-viewer](https://github.com/mendus59/manabox-viewer). It is growing into a full collection manager: binders, decks, an EDH deck builder that knows what you own, and card scanning on phones.
+ManaBin started as [manabox-viewer](https://github.com/mendus59/manabox-viewer). It is now a full collection manager: binders, decks, an EDH deck builder that knows what you own, and card scanning on phones.
 
 ## Your collection
 
@@ -49,6 +49,21 @@ Below every deck is a builder panel:
 - **Buy missing:** the cheapest printing of each card you're missing at TCGplayer, Card Kingdom and MTGGoldfish, each store's total, the total buying each card where it's cheapest, and a button to put them all on your wishlist.
 
 The **Wishlist** (from Decks) lists wanted cards by deck with each store's price, lets you change quantities, copies the list for a store's mass entry, and marks cards you've since added to your collection.
+
+## Scanning cards
+
+**Scan** uses the camera (the back camera on a phone) to add cards quickly:
+
+1. Tap **Start scanning** and hold a card inside the frame, name at the top. The reader reads the name and the small print at the bottom left (collector number, set code and language on cards from 2014 on), picks that exact printing, and adds it to the **Scanned** list with a beep. Put the next card in; holding the same card again after taking it away adds another copy.
+2. When the set and number can't be read (older cards, glare), the newest printing, or one from the set you scanned last, is used and marked **Check the printing**.
+3. Tap a scanned card to change its printing, finish (the camera can't tell foils), condition or language, or use − and + for copies. **Or type a card name** adds one without the camera.
+4. Pick a binder (or **New binder…**) and **Save**. The list is kept on the device until it's saved, so closing the app loses nothing.
+
+The text reader is [Tesseract](https://github.com/naptha/tesseract.js), running on the device and served with the site (about 7 MB the first time, then cached). Nothing is uploaded. A light switch shows on phones whose camera has one.
+
+## Phone app
+
+ManaBin is an installable web app: on Android choose **Install app** in Chrome's menu, on iPhone **Share → Add to Home Screen** in Safari. It opens full screen, has a **Scan cards** shortcut, and its service worker keeps the app, the text reader and the card data, so it opens and scans offline (saving syncs when you're back online).
 
 ## Friends
 
