@@ -10,8 +10,10 @@
     "test": "node --test src/lib/*.test.js src/lib/*.test.ts"
   },
   "dependencies": {
+    "@tesseract.js-data/eng": "^1.0.0",
     "firebase": "^13.2.0",
-    "preact": "^11.2.0"
+    "preact": "^11.2.0",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.6",
