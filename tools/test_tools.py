@@ -78,5 +78,25 @@ class BuildTests(unittest.TestCase):
             self.assertEqual(json.loads((out / "ids" / "3.json").read_text()), {"3": oid})
 
 
+class BulkFormatTests(unittest.TestCase):
+    def test_reads_one_line_and_compact_files(self):
+        cards = [{"id": "1", "name": "A"}, {"id": "2", "name": "B, with comma"}]
+        with tempfile.TemporaryDirectory() as tmp:
+            lines = Path(tmp) / "lines.json"
+            lines.write_text("[\n" + ",\n".join(json.dumps(c) for c in cards) + "\n]\n")
+            compact = Path(tmp) / "compact.json"
+            compact.write_text(json.dumps(cards))
+            self.assertEqual(list(build_library.iter_bulk(lines)), cards)
+            self.assertEqual(list(build_library.iter_bulk(compact)), cards)
+
+    def test_finds_download_link(self):
+        self.assertEqual(build_library.bulk_file_url({"uri": "https://api.scryfall.com/x", "download_uri": "https://data.scryfall.io/a.json"}),
+                         "https://data.scryfall.io/a.json")
+        self.assertEqual(build_library.bulk_file_url({"uri": "https://api.scryfall.com/x", "new_name": "https://data.scryfall.io/a.json.gz"}),
+                         "https://data.scryfall.io/a.json.gz")
+        with self.assertRaises(RuntimeError):
+            build_library.bulk_file_url({"uri": "https://api.scryfall.com/x"})
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -21,7 +21,9 @@ copied, the app loads them from Scryfall's image CDN. Only standard-library
 modules are used.
 """
 import argparse
+import gzip
 import json
+import shutil
 import sys
 import time
 import urllib.request
@@ -75,19 +77,40 @@ def get(url, timeout=120):
             time.sleep(2 ** attempt)
 
 
+def bulk_file_url(info):
+    """The bulk file's download link. Scryfall has renamed fields before, so look for any data.scryfall.io link."""
+    for key in ("download_uri", "download_url", "compressed_uri", "uri_compressed"):
+        if isinstance(info.get(key), str) and "data.scryfall.io" in info[key]:
+            return info[key]
+    for value in info.values():
+        if isinstance(value, str) and "data.scryfall.io" in value:
+            return value
+    raise RuntimeError(f"No download link in Scryfall's bulk-data response (fields: {', '.join(sorted(info))})")
+
+
 def download_bulk():
     """Download the Default Cards bulk file (cached by its timestamp). Returns (path, updated_at)."""
     info = json.loads(get("https://api.scryfall.com/bulk-data/default-cards"))
+    print("Scryfall bulk-data fields: " + ", ".join(f"{k}={v}" for k, v in sorted(info.items()) if k != "description"))
     CACHE.mkdir(exist_ok=True)
     path = CACHE / f"default-cards-{info['updated_at'][:19].replace(':', '')}.json"
     if not path.exists():
         size = info.get("size") or info.get("compressed_size")
         print(f"Downloading {size / 1e6:.0f} MB of card data from Scryfall" if size else "Downloading card data from Scryfall")
-        req = urllib.request.Request(info["download_uri"], headers={"User-Agent": UA})
+        req = urllib.request.Request(bulk_file_url(info), headers={"User-Agent": UA, "Accept-Encoding": "gzip"})
         tmp = path.with_suffix(".part")
         with urllib.request.urlopen(req, timeout=600) as resp, open(tmp, "wb") as f:
             while chunk := resp.read(1 << 20):
                 f.write(chunk)
+        # The file may come gzip-compressed (by name or by Content-Encoding); store it plain.
+        with open(tmp, "rb") as f:
+            gzipped = f.read(2) == b"\x1f\x8b"
+        if gzipped:
+            plain = path.with_suffix(".unzip")
+            with gzip.open(tmp, "rb") as src, open(plain, "wb") as dst:
+                shutil.copyfileobj(src, dst, 1 << 20)
+            tmp.unlink()
+            tmp = plain
         tmp.replace(path)
         for old in CACHE.glob("default-cards-*.json"):
             if old != path:
@@ -96,12 +119,32 @@ def download_bulk():
 
 
 def iter_bulk(path):
-    """Scryfall bulk files hold one card per line, so they can be read without loading 500 MB at once."""
+    """Yield every card in a bulk file.
+
+    Scryfall's bulk files usually hold one card per line, which lets us read 500 MB without
+    loading it all at once. If a file isn't laid out that way, fall back to reading it whole.
+    """
+    count = 0
     with open(path, encoding="utf-8") as f:
         for line in f:
             line = line.strip().rstrip(",")
-            if line.startswith("{"):
-                yield json.loads(line)
+            if not line or line in ("[", "]"):
+                continue
+            try:
+                card = json.loads(line) if line.startswith("{") else None
+            except json.JSONDecodeError:
+                card = None
+            if card is None:
+                if count:
+                    raise ValueError(f"Unexpected line in {path} after {count} cards: {line[:80]}")
+                break
+            count += 1
+            yield card
+        else:
+            return
+    print("Bulk file isn't one card per line; reading it whole")
+    with open(path, encoding="utf-8") as f:
+        yield from json.load(f)
 
 
 def pick(source, fields):
