@@ -1,4 +1,5 @@
-# Builds the app and publishes it to GitHub Pages, with the card library from the `data` branch.
+# Builds the app and publishes it to GitHub Pages, with the card library from the `data` branch
+# and store prices from the `prices` branch.
 name: Deploy to GitHub Pages
 
 on:
@@ -6,7 +7,7 @@ on:
     branches: [main]
     paths: ["src/**", "public/**", "index.html", "package.json", "package-lock.json", "vite.config.ts", "tsconfig.json", ".github/workflows/pages.yml"]
   workflow_dispatch:
-  workflow_call:  # used by library.yml after it updates data
+  workflow_call:  # used by library.yml and prices.yml after they update data
 
 permissions:
   contents: read
@@ -34,6 +35,14 @@ jobs:
             git archive origin/data | tar -x -C public/library
           else
             echo "::warning title=Card library::No data branch yet. Run the Card library workflow to build it."
+          fi
+      - name: Add store prices
+        run: |
+          mkdir -p public/library/prices
+          if git fetch --depth 1 origin prices 2>/dev/null; then
+            git archive origin/prices | tar -x -C public/library/prices
+          else
+            echo "::notice title=Store prices::No prices branch yet. Run the Store prices workflow to fetch them."
           fi
       - uses: actions/setup-node@v4
         with:

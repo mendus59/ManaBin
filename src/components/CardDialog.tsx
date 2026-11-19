@@ -1,14 +1,15 @@
 // Card details: rules text, the printing shown, its prices, and every other printing of the card.
+import { Fragment } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { cap, images, scryfallUrl, type Card, type CardFace, type Printing } from "../lib/cards";
-import { loadPrintings } from "../lib/data";
+import { loadPrintings, loadStorePrices } from "../lib/data";
+import { storeRows } from "../lib/prices";
 import { AddToCollection } from "./AddToCollection";
 import { Symbols } from "./Symbols";
 
 const LEGAL_FORMATS = ["standard", "pioneer", "modern", "legacy", "vintage", "commander", "pauper", "brawl", "historic", "timeless"];
-const PRICE_LABELS: [string, string, string][] = [
-  ["usd", "$", ""], ["usd_foil", "$", " foil"], ["usd_etched", "$", " etched"], ["eur", "€", ""], ["eur_foil", "€", " foil"], ["tix", "", " tix"],
-];
+const OTHER_PRICES: [string, string, string][] = [["eur", "€", ""], ["eur_foil", "€", " foil"], ["tix", "", " tix"]];
+const FINISH_SUFFIX = ["", " foil", " etched"];
 
 interface Props {
   card: Card;
@@ -59,6 +60,7 @@ function Face({ f, typeLine }: { f: CardFace; typeLine?: string }) {
 export function CardDialog({ card: c, owned, setNames, onClose, onStep, hasPrev, hasNext }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [printings, setPrintings] = useState<Printing[] | null>(null);
+  const [store, setStore] = useState<Map<string, number[]> | null>(null);
   const [picked, setPicked] = useState<string>(c.id);
   const [face, setFace] = useState(0);
 
@@ -73,6 +75,7 @@ export function CardDialog({ card: c, owned, setNames, onClose, onStep, hasPrev,
     if (!c.oracle_id) return;
     let live = true;
     loadPrintings(c.oracle_id).then((ps) => live && setPrintings(ps));
+    loadStorePrices([c.oracle_id]).then((sp) => live && setStore(sp));
     return () => { live = false; };
   }, [c]);
 
@@ -86,7 +89,7 @@ export function CardDialog({ card: c, owned, setNames, onClose, onStep, hasPrev,
   }, [hasNext, hasPrev, onStep]);
 
   // The printing on show: the card itself, or one picked from the printings list.
-  // In a collection the card is the printing owned, so its prices (highest across stores) are kept.
+  // In a collection the card's prices may come from another store; `tcg_prices` keeps TCGplayer's.
   const p = picked === c.id ? null : printings?.find((x) => x.id === picked) || null;
   const shown = p
     ? { ...c, ...p, image_uris: undefined, card_faces: c.card_faces?.map((f) => ({ ...f, image_uris: undefined })), scryfall_uri: undefined, lang: p.lang || "en" }
@@ -94,7 +97,11 @@ export function CardDialog({ card: c, owned, setNames, onClose, onStep, hasPrev,
   const imgs = images(shown, "large");
   const setName = (code: string) => setNames?.[code] || (code === c.set ? c.set_name : undefined) || code.toUpperCase();
   const faces: CardFace[] = c.card_faces && !c.oracle_text ? c.card_faces : [c as unknown as CardFace];
-  const prices = PRICE_LABELS.filter(([k]) => shown.prices?.[k]).map(([k, pre, post]) => `${pre}${shown.prices![k]}${post}`).join(" · ");
+  const tcg: Record<string, string> | undefined = p ? p.prices : c.tcg_prices || c.prices;
+  const storePrices = storeRows(tcg, store?.get(shown.id))
+    .filter((row) => row.prices.some(Boolean))
+    .map((row) => ({ ...row, text: row.prices.map((v, i) => (v ? `$${v.toFixed(2)}${FINISH_SUFFIX[i]}` : "")).filter(Boolean).join(" · ") }));
+  const other = OTHER_PRICES.filter(([k]) => tcg?.[k]).map(([k, pre, post]) => `${pre}${tcg![k]}${post}`).join(" · ");
   const legal = LEGAL_FORMATS.filter((f) => c.legalities[f]);
   const o = c.owned;
   const finishes = o ? [
@@ -128,7 +135,10 @@ export function CardDialog({ card: c, owned, setNames, onClose, onStep, hasPrev,
             </dd>
             {owned && o && <><dt>Owned</dt><dd>{o.qty} ({finishes})</dd></>}
             {shown.artist && <><dt>Artist</dt><dd>{shown.artist}</dd></>}
-            {prices && <><dt>Price</dt><dd>{prices}</dd></>}
+            {storePrices.map((row) => (
+              <Fragment key={row.source}><dt>{row.store}</dt><dd>{row.text}</dd></Fragment>
+            ))}
+            {other && <><dt>Cardmarket, MTGO</dt><dd>{other}</dd></>}
             {legal.length > 0 && (
               <>
                 <dt>Legal</dt>

@@ -8,6 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import build_library  # noqa: E402
+import build_prices  # noqa: E402
 from check_sets import decide  # noqa: E402
 
 TODAY = date(2026, 11, 18)
@@ -97,6 +98,59 @@ class BulkFormatTests(unittest.TestCase):
                          "https://data.scryfall.io/a.json.gz")
         with self.assertRaises(RuntimeError):
             build_library.bulk_file_url({"uri": "https://api.scryfall.com/x"})
+
+
+def gf(name, subset, code, number, finish="regular", price="1.50"):
+    return {"card_uuid": "u", "display_name": name, "subset_id": subset, "set": code, "finish": finish, "foil": finish == "foil",
+            "links": {"default": f"/price/some-set/{number}/{name.lower()}"},
+            "prices": {"paper": {"current_price": price}}}
+
+
+class PriceTests(unittest.TestCase):
+    finishes = {"a": {"nonfoil", "foil"}, "b": {"foil"}, "c": {"etched"}, "d": {"nonfoil", "foil"}}
+    by_number = {("blb", "183"): "a", ("pblb", "183s"): "b", ("cmr", "400"): "c", ("pblb", "183p"): "d"}
+
+    def key(self, card):
+        return build_prices.goldfish_key(card, self.by_number, self.finishes)
+
+    def test_main_set_and_foil(self):
+        self.assertEqual(self.key(gf("X", "main_set", "BLB", "183")), ("a", "nonfoil"))
+        self.assertEqual(self.key(gf("X", "showcase_foil", "BLB", "183", "foil")), ("a", "foil"))
+
+    def test_promos_go_to_the_promo_set(self):
+        self.assertEqual(self.key(gf("X", "prerelease", "BLB", "183", "foil")), ("b", "foil"))
+        self.assertEqual(self.key(gf("X", "pw_stamp", "BLB", "183")), ("d", "nonfoil"))
+
+    def test_etched_and_unmatched(self):
+        self.assertEqual(self.key(gf("X", "foil_etched", "CMR", "400", "foil")), ("c", "etched"))
+        self.assertIsNone(self.key(gf("X", "main_set", "BLB", "999")))
+        self.assertIsNone(self.key(gf("X", "main_set", "PBLB", "183s")))  # no nonfoil of that printing
+        self.assertIsNone(self.key(gf("X", "sealed", "BLB", "183")))
+
+    def test_reads_cards_from_the_page(self):
+        props = json.dumps({"cards": [gf("X", "main_set", "BLB", "183")], "view_type": "x"}).replace('"', "&quot;")
+        page = f'<div data-react-class="CardTable" data-react-props="{props}"></div>'
+        self.assertEqual(build_prices.goldfish_cards(page)[0]["set"], "BLB")
+        self.assertEqual(build_prices.goldfish_cards("<html></html>"), [])
+
+    def test_card_kingdom(self):
+        items = [
+            {"scryfall_id": "a", "is_foil": "false", "price_retail": "2.49"},
+            {"scryfall_id": "a", "is_foil": "true", "price_retail": "5.00"},
+            {"scryfall_id": "c", "is_foil": "true", "variation": "Foil Etched", "price_retail": "3.00"},
+            {"scryfall_id": "zzz", "is_foil": "false", "price_retail": "1.00"},
+            {"scryfall_id": "b", "is_foil": "true", "price_retail": "0"},
+        ]
+        self.assertEqual(build_prices.card_kingdom(items, {"a", "b", "c"}),
+                         {("a", "nonfoil"): 2.49, ("a", "foil"): 5.0, ("c", "etched"): 3.0})
+
+    def test_write_shards(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d) / "prices"
+            build_prices.write(out, {"a": "ab", "c": "cd"}, {("a", "foil"): 5.0}, {("a", "nonfoil"): 1.5, ("c", "etched"): 2.0}, {})
+            self.assertEqual(json.loads((out / "ab.json").read_text()), {"a": [0, 5.0, 0, 1.5, 0, 0]})
+            self.assertEqual(json.loads((out / "cd.json").read_text()), {"c": [0, 0, 0, 0, 0, 2.0]})
+            self.assertIn("built_at", json.loads((out / "manifest.json").read_text()))
 
 
 if __name__ == "__main__":

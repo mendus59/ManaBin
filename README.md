@@ -6,11 +6,11 @@
      See CLAUDE.md ("Site summary"). -->
 A free web app for tracking a Magic: The Gathering collection, with every card and printing and Scryfall-style search.
 
-- Search the full paper card library, with every printing and art variant and its price.
-- Add the exact printing, finish, condition and language you own, or import a ManaBox CSV export.
+- Search the full paper card library, with every printing and art variant.
+- See TCGplayer, Card Kingdom and MTGGoldfish prices for each printing, and value your collection by any of them.
+- Add the exact printing, finish, condition and language you own, import a ManaBox CSV, or export a CSV or backup.
 - Sign in with Google to keep a private collection that syncs across devices and works offline.
 - New sets are added automatically on release day by a daily GitHub Actions job.
-- Export your collection as a ManaBox-compatible CSV or a JSON backup at any time.
 - Add friends with a friend code or invite link, and choose who can see your collection.
 <!-- site-summary:end -->
 
@@ -82,7 +82,14 @@ npm run build                       # production build in dist/
 
 ## Prices
 
-TCGplayer market prices, via Scryfall's bulk data, refreshed whenever the library rebuilds. Card Kingdom and MTGGoldfish prices are planned.
+Every printing has prices from three stores, shown side by side in the card dialog:
+
+- **TCGplayer** market prices, from Scryfall's bulk data, refreshed whenever the library rebuilds.
+- **Card Kingdom** near-mint retail and **MTGGoldfish** paper prices, fetched weekly by `.github/workflows/prices.yml` (Mondays 12:00 UTC) running `tools/build_prices.py`. Card Kingdom's public price list is one download, matched on Scryfall ID. MTGGoldfish is read one set page at a time (about 340 pages, two seconds apart) and matched on set code, collector number and finish.
+
+The price files are force-pushed to the `prices` branch, like the library's `data` branch, and the Pages deploy adds them under `library/prices/`. To refresh by hand: **Actions → Store prices → Run workflow**.
+
+A collection is valued by the **Prices** menu: the highest of the three for each card (the default), or one store, falling back to TCGplayer where that store doesn't list a card. The choice is remembered in the browser, and searches like `usd>10` and price sorting follow it.
 
 ## Hosting on GitHub Pages
 
