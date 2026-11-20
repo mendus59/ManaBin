@@ -19,11 +19,14 @@ test("unit prices fall back to another finish", () => {
 
 test("snapshots keep one per price update and drop old ones", () => {
   let saved: Snapshot[] = [];
-  saved = recordSnapshot(saved, { at: "2026-10-01T09:30:00Z", prices: { a: 1 } });
-  saved = recordSnapshot(saved, { at: "2026-11-10T09:30:00Z", prices: { a: 2 } });
-  saved = recordSnapshot(saved, { at: "2026-11-10T09:30:00Z", prices: { b: 3 } });
-  saved = recordSnapshot(saved, { at: "2026-11-18T09:30:00Z", prices: { a: 4 } });
-  assert.deepEqual(saved.map((s) => s.at), ["2026-11-10T09:30:00Z", "2026-11-18T09:30:00Z"]);
+  saved = recordSnapshot(saved, { at: "2026-09-01T12:00:00Z", prices: { a: 1 } });
+  saved = recordSnapshot(saved, { at: "2026-10-01T12:00:00Z", prices: { a: 2 } });
+  saved = recordSnapshot(saved, { at: "2026-10-01T12:00:00Z", prices: { b: 3 } });
+  saved = recordSnapshot(saved, { at: "2026-11-01T12:00:00Z", prices: { a: 4 } });
+  // Monthly updates: the previous month is kept, anything older than about two months goes.
+  assert.deepEqual(saved.map((s) => s.at), ["2026-09-01T12:00:00Z", "2026-10-01T12:00:00Z", "2026-11-01T12:00:00Z"]);
+  saved = recordSnapshot(saved, { at: "2026-12-01T12:00:00Z", prices: { a: 5 } });
+  assert.deepEqual(saved.map((s) => s.at), ["2026-10-01T12:00:00Z", "2026-11-01T12:00:00Z", "2026-12-01T12:00:00Z"]);
   assert.deepEqual(saved[0].prices, { a: 2, b: 3 });
 });
 

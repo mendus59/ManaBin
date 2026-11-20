@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Decide whether the card library needs rebuilding, and list upcoming sets.
 
-Run daily by .github/workflows/library.yml. Compares Scryfall's set list with the
+Run by .github/workflows/library.yml (monthly, and by hand). Compares Scryfall's set list with the
 manifest of the last library build and rebuilds when:
 
   - a set has been released that the last build didn't cover, or

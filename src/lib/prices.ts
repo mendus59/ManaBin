@@ -1,5 +1,5 @@
 // Store prices: TCGplayer (from Scryfall, on each printing) plus Card Kingdom and MTGGoldfish
-// (from library/prices/xx.json, written weekly by tools/build_prices.py).
+// (from library/prices/xx.json, written monthly by tools/build_prices.py).
 import type { Card } from "./cards";
 
 /** [ck, ck_foil, ck_etched, gf, gf_foil, gf_etched], 0 where the store has no price. */

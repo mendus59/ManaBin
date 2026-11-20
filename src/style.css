@@ -573,6 +573,7 @@ a.tile:hover { border-color: var(--muted); }
 .tile-note { color: var(--muted); font-size: 0.8rem; }
 .up { color: #8fd19e; }
 .down { color: #f08a7a; }
+.prices-updated { margin: 0 2px; }
 .dash-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 10px; }
 .panel-head a { font-size: 0.88rem; }

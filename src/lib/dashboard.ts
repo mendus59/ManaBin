@@ -20,7 +20,8 @@ export interface Snapshot {
   prices: PriceMap;
 }
 
-const KEEP_DAYS = 35;
+// Prices update monthly, so keep about two months to always have the previous update.
+const KEEP_DAYS = 70;
 const KEEP_MAX = 12;
 const DAY = 86400e3;
 

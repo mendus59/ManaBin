@@ -6,7 +6,7 @@ import { ImportDialog } from "../components/ImportDialog";
 import { dollars, images, ownedValue, type Card, type Printing } from "../lib/cards";
 import { collectionCards, totalCopies, ownedByOracle, type Entries } from "../lib/collection";
 import { baseline, binderTotals, priceMap, recentPrintings, recordSnapshot, valueChange, type Snapshot } from "../lib/dashboard";
-import { loadManifest, loadPriceManifest, loadPrintings, loadSets, loadStorePrices, type Manifest } from "../lib/data";
+import { loadManifest, loadPrintings, pricesUpdatedAt, loadSets, loadStorePrices, type Manifest } from "../lib/data";
 import { deckSize, FORMATS, missingCards } from "../lib/decks";
 import { SOURCES, savedSource, withSource } from "../lib/prices";
 import { useCollection } from "../state/collection";
@@ -22,6 +22,7 @@ const searchLink = (route: string, q: string) => (e: Event) => {
   openSearch(route, q);
 };
 
+const longDay = (d: string) => new Date(d).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
 const shortDay = (d: string) => new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 
 function shell(nav: ComponentChildren, body: ComponentChildren) {
@@ -182,11 +183,8 @@ function usePriceHistory(uid: string | undefined, source: string, ready: boolean
   const [at, setAt] = useState<string | null>(null);
   const [base, setBase] = useState<Snapshot | null | undefined>(undefined);
   useEffect(() => {
-    Promise.all([loadManifest(), loadPriceManifest()]).then(([m, pm]) => {
-      const stamps = [m?.built_at, source === "tcgplayer" ? undefined : pm?.built_at].filter((s): s is string => !!s);
-      setAt(stamps.sort().pop() || null);
-    });
-  }, []);
+    pricesUpdatedAt(source).then(setAt);
+  }, [source]);
   useEffect(() => {
     if (!ready || !uid || !at || !entries || !byPrinting) return;
     const key = `manabin-price-history-${uid}-${source}`;
@@ -203,7 +201,7 @@ function Dashboard({ nav }: { nav: ComponentChildren }) {
   const col = useCollection();
   const entries = col.entries;
   const { error, oracles, byPrinting, ready, source } = usePricedCollection(entries);
-  const { base } = usePriceHistory(col.account?.uid, source, ready, entries, byPrinting);
+  const { at, base } = usePriceHistory(col.account?.uid, source, ready, entries, byPrinting);
   const [importing, setImporting] = useState(false);
 
   const value = useMemo(() => [...(byPrinting?.values() || [])].reduce((n, c) => n + ownedValue(c), 0), [byPrinting]);
@@ -261,7 +259,7 @@ function Dashboard({ nav }: { nav: ComponentChildren }) {
       cls={change.change > 0.005 ? "up" : change.change < -0.005 ? "down" : ""}
       note={change.base ? `${change.pct >= 0 ? "+" : "−"}${Math.abs(change.pct).toFixed(1)}% on cards you owned then` : undefined} />
   ) : (
-    <Tile label="Price change" value="Starts today" note="Price changes appear here after the next price update." />
+    <Tile label="Price change" value="Starts today" note="Price changes appear here after the next price update, on the 1st of the month." />
   );
 
   return shell(nav, (
@@ -274,6 +272,7 @@ function Dashboard({ nav }: { nav: ComponentChildren }) {
         <Tile label="Cards" value={copies.toLocaleString()} note={`${unique.toLocaleString()} different`} href="#/collection" />
         <Tile label="Decks" value={(col.decks?.length ?? 0).toLocaleString()} note={col.wishlist?.length ? `${col.wishlist.length} on your wishlist` : "Build one from your cards"} href="#/decks" />
       </section>
+      {at && <p class="muted small prices-updated">Prices updated on {longDay(at)}. They refresh on the 1st of every month.</p>}
 
       <div class="dash-grid">
         <section class="home-panel">
@@ -300,7 +299,7 @@ function Dashboard({ nav }: { nav: ComponentChildren }) {
         <section class="home-panel">
           <div class="panel-head"><h3>Biggest price moves</h3>{base && <span class="muted small">since {shortDay(base.at)}</span>}</div>
           {!change ? (
-            <p class="muted">{ready ? "ManaBin starts tracking your cards' prices on this device today. The cards that rose or fell the most will show here after the next price update." : "Loading…"}</p>
+            <p class="muted">{ready ? "ManaBin starts tracking your cards' prices on this device today. The cards that rose or fell the most will show here after the next price update, on the 1st of the month." : "Loading…"}</p>
           ) : !change.movers.length ? (
             <p class="muted">No price changes on your cards yet.</p>
           ) : (

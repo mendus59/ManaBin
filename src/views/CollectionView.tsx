@@ -5,7 +5,7 @@ import { Browse } from "../components/Browse";
 import { ImportDialog } from "../components/ImportDialog";
 import { dollars, ownedValue, type Card, type Printing } from "../lib/cards";
 import { collectionCards, totalCopies, type Entries } from "../lib/collection";
-import { loadLibrary, loadPriceManifest, loadPrintings, loadStorePrices, type Library } from "../lib/data";
+import { loadLibrary, loadPrintings, pricesUpdatedAt, loadStorePrices, type Library } from "../lib/data";
 import { SOURCES, saveSource, savedSource, withSource, type PriceSource } from "../lib/prices";
 import { prepare } from "../lib/search.js";
 import { collectionCsv, download, makeBackup } from "../lib/transfer";
@@ -50,8 +50,8 @@ export function CollectionView({ nav, friendUid }: { nav: ComponentChildren; fri
   const shownEntries = useMemo(() => (entries && !friendUid ? inBinder(entries, binder) : entries), [entries, binder, friendUid]);
 
   useEffect(() => {
-    loadPriceManifest().then((m) => m && setPricesAt(new Date(m.built_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })));
-  }, []);
+    pricesUpdatedAt(source).then((at) => setPricesAt(at && new Date(at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })));
+  }, [source]);
   const pickSource = (s: PriceSource) => {
     setSource(s);
     saveSource(s);
@@ -70,7 +70,7 @@ export function CollectionView({ nav, friendUid }: { nav: ComponentChildren; fri
     tcgplayer: "Prices are TCGplayer market prices via Scryfall.",
     cardkingdom: "Prices are Card Kingdom retail, or TCGplayer where Card Kingdom doesn't list a card.",
     mtggoldfish: "Prices are from MTGGoldfish, or TCGplayer where MTGGoldfish doesn't list a card.",
-  }[source] + (pricesAt && source !== "tcgplayer" ? ` Card Kingdom and MTGGoldfish prices from ${pricesAt}.` : "");
+  }[source] + (pricesAt ? ` Prices updated on ${pricesAt}.` : "");
   const totalTitle = `${sourceName} price for each copy owned`;
 
   useEffect(() => {
