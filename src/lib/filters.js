@@ -17,7 +17,7 @@ export function createFilters() {
     colors: new Set(), colorMode: "include",
     identity: new Set(), identityMode: "atmost",
     types: new Set(), typeMode: "any",
-    subtype: "", set: "",
+    subtype: "", sets: new Set(),
     mv: new Set(), rarity: new Set(),
     format: "", finish: "",
     priceMin: "", priceMax: "",
@@ -68,7 +68,10 @@ export function createFilters() {
       const st = state.subtype.trim().toLowerCase();
       tests.push((c) => c._f.subtypes.has(st));
     }
-    if (state.set) tests.push((c) => c.set === state.set || (c.print_sets || []).includes(state.set));
+    if (state.sets.size) {
+      const sets = state.sets;
+      tests.push((c) => sets.has(c.set) || (c.print_sets || []).some((s) => sets.has(s)));
+    }
     if (state.mv.size) {
       tests.push((c) => {
         const mv = Math.floor(c.cmc || 0);
@@ -96,15 +99,16 @@ export function createFilters() {
   }
 
   function activeCount() {
-    return [state.colors.size, state.identity.size, state.types.size, state.subtype, state.set, state.mv.size,
+    return [state.colors.size, state.identity.size, state.types.size, state.subtype, state.sets.size, state.mv.size,
       state.rarity.size, state.format, state.finish, state.priceMin || state.priceMax].filter(Boolean).length;
   }
 
   // ---------- URL params ----------
 
-  const SET_PARAMS = { colors: "fc", identity: "fi", types: "ft", mv: "fmv", rarity: "fr" };
+  // "fs" used to hold one set code; a comma-separated list reads the same way, so old links still work.
+  const SET_PARAMS = { colors: "fc", identity: "fi", types: "ft", mv: "fmv", rarity: "fr", sets: "fs" };
   const VALUE_PARAMS = {
-    colorMode: "fcm", identityMode: "fim", typeMode: "ftm", subtype: "fst", set: "fs",
+    colorMode: "fcm", identityMode: "fim", typeMode: "ftm", subtype: "fst",
     format: "ffmt", finish: "ff", priceMin: "pmin", priceMax: "pmax",
   };
   const DEFAULTS = { colorMode: "include", identityMode: "atmost", typeMode: "any" };
@@ -134,6 +138,26 @@ export function createFilters() {
   const colorChips = (group) => COLORS.map(([s, name]) =>
     chip(group, s, `<img class="sym" src="${SYMBOL(s)}" alt="${name}">`, name)).join("");
 
+  let setLabels = new Map();
+  const setLabel = (code) => setLabels.get(code) || code.toUpperCase();
+  function setSummary() {
+    const n = state.sets.size;
+    if (!n) return "All sets";
+    if (n === 1) return esc(setLabel([...state.sets][0]));
+    return `${n} sets`;
+  }
+  const setChips = () => [...state.sets].map((code) =>
+    `<button type="button" class="chip on" data-set-remove="${esc(code)}" title="Remove ${esc(setLabel(code))}">${esc(code.toUpperCase())} <span aria-hidden="true">×</span></button>`).join("");
+  /** Refreshes the set summary, chips and checkboxes without redrawing, so the open list keeps its place. */
+  function syncSets(container) {
+    const pick = container.querySelector(".setpick");
+    if (!pick) return;
+    pick.querySelector("summary").innerHTML = setSummary();
+    container.querySelector(".setchips").innerHTML = setChips();
+    container.querySelector("[data-sets-clear]").hidden = !state.sets.size;
+    pick.querySelectorAll("input[data-set]").forEach((box) => (box.checked = state.sets.has(box.dataset.set)));
+  }
+
   function render(container, cards, setNames) {
     const sets = new Map(), subtypes = new Map(), rarities = new Set();
     for (const c of cards) {
@@ -145,8 +169,14 @@ export function createFilters() {
       c._f.subtypeNames.forEach((t) => subtypes.set(t, (subtypes.get(t) || 0) + 1));
       rarities.add(c.rarity);
     }
-    const setOptions = [["", "All sets"], ...[...sets].sort((a, b) => a[1].name.localeCompare(b[1].name))
-      .map(([code, s]) => [code, `${s.name} (${code.toUpperCase()}) · ${s.n}`])];
+    // Keep chosen sets listed even when the current cards have none from them, so they can be unticked.
+    for (const code of state.sets) if (!sets.has(code)) sets.set(code, { name: (setNames && setNames[code]) || code.toUpperCase(), n: 0 });
+    setLabels = new Map([...sets].map(([code, s]) => [code, s.name]));
+    const setRows = [...sets].sort((a, b) => a[1].name.localeCompare(b[1].name)).map(([code, s]) =>
+      `<label class="setrow" data-search="${esc(`${s.name} ${code}`.toLowerCase())}">
+        <input type="checkbox" data-set="${esc(code)}"${state.sets.has(code) ? " checked" : ""}>
+        <span class="setname">${esc(s.name)} <span class="setcode">${esc(code.toUpperCase())}</span></span>
+        <span class="setn">${s.n}</span></label>`).join("");
     const subtypeOptions = [...subtypes].sort((a, b) => a[0].localeCompare(b[0]))
       .map(([t, n]) => `<option value="${esc(t)}">${n} card${n === 1 ? "" : "s"}</option>`).join("");
 
@@ -173,8 +203,15 @@ export function createFilters() {
         <datalist id="f-subtypes">${subtypeOptions}</datalist>
       </div>
       <div class="fgroup">
-        <div class="fhead"><span>Set</span></div>
-        ${select("set", setOptions)}
+        <div class="fhead"><span>Set</span><button type="button" class="linkish" data-sets-clear${state.sets.size ? "" : " hidden"}>Clear</button></div>
+        <details class="setpick">
+          <summary>${setSummary()}</summary>
+          <div class="setpop">
+            <input type="search" data-set-search placeholder="Search sets" aria-label="Search sets" autocomplete="off">
+            <div class="setlist">${setRows}</div>
+          </div>
+        </details>
+        <div class="chips setchips">${setChips()}</div>
       </div>
       <div class="fgroup">
         <div class="fhead"><span>Rarity</span></div>
@@ -204,6 +241,13 @@ export function createFilters() {
     render(container, cards, setNames);
 
     container.addEventListener("click", (e) => {
+      const remove = e.target.closest("[data-set-remove]");
+      if (remove || e.target.closest("[data-sets-clear]")) {
+        remove ? state.sets.delete(remove.dataset.setRemove) : state.sets.clear();
+        syncSets(container);
+        onChange();
+        return;
+      }
       const b = e.target.closest(".chip");
       if (!b) return;
       const set = state[b.dataset.group];
@@ -215,6 +259,18 @@ export function createFilters() {
     });
     let debounce;
     const onField = (e) => {
+      if (e.target.dataset.set) {
+        if (e.type !== "change") return;
+        e.target.checked ? state.sets.add(e.target.dataset.set) : state.sets.delete(e.target.dataset.set);
+        syncSets(container);
+        onChange();
+        return;
+      }
+      if (e.target.matches("[data-set-search]")) {
+        const q = e.target.value.trim().toLowerCase();
+        container.querySelectorAll(".setrow").forEach((row) => (row.hidden = !!q && !row.dataset.search.includes(q)));
+        return;
+      }
       const field = e.target.dataset.field;
       if (!field) return;
       state[field] = e.target.value;

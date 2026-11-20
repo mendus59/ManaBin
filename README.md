@@ -152,4 +152,4 @@ The search syntax follows https://scryfall.com/docs/syntax: `t:`, `o:`, `c:`, `i
 - In the library, `s:` matches any set a card was printed in, and `is:foil` matches cards that come in foil.
 - In a collection, `qty>=2` filters by copies owned, and `is:foil`/`is:nonfoil` match the copies owned.
 
-The **Filters** panel adds point-and-click filters, combined with the search box: color and color identity (including / exactly / at most), mana value, card type, subtype, set, rarity, format legality, finish, and price range. The search, sort, view and filters are stored in the URL, so you can send someone a link to a specific search.
+The **Filters** panel adds point-and-click filters, combined with the search box: color and color identity (including / exactly / at most), mana value, card type, subtype, one or more sets (searchable, with a tick box per set), rarity, format legality, finish, and price range. The search, sort, view and filters are stored in the URL, so you can send someone a link to a specific search.
