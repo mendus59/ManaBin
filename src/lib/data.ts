@@ -124,6 +124,16 @@ export function loadPriceManifest(): Promise<PriceManifest | null> {
 }
 
 /**
+ * When the prices shown with a source were last updated: the library build for TCGplayer (its
+ * prices come from Scryfall), else the newer of that and the store price fetch. Null if unknown.
+ */
+export async function pricesUpdatedAt(source: string): Promise<string | null> {
+  const [m, pm] = await Promise.all([loadManifest(), loadPriceManifest()]);
+  const stamps = [m?.built_at, source === "tcgplayer" ? undefined : pm?.built_at].filter((s): s is string => !!s);
+  return stamps.sort().pop() || null;
+}
+
+/**
  * The cheapest non-foil price (foil where a card has no non-foil) of any printing of each card,
  * at each store: [TCGplayer, Card Kingdom, MTGGoldfish], 0 where a store has none.
  */

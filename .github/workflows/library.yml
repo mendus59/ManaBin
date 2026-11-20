@@ -1,11 +1,13 @@
-# Keeps the card library current. Every day it compares Scryfall's set list with the last build
-# and rebuilds when a new set has been released (or the build is 30+ days old). The built files
-# live on the `data` branch, not main, so card data never bloats the main history.
+# Rebuilds the card library (cards, sets and TCGplayer prices from Scryfall) on the 1st of every
+# month. The Store prices run later that morning picks up the new library and deploys the site.
+# Run it by hand to rebuild between months: it only rebuilds when a new set has been released
+# (or the build is 30+ days old) unless "force" is ticked. The built files live on the `data`
+# branch, not main, so card data never bloats the main history.
 name: Card library
 
 on:
   schedule:
-    - cron: "30 9 * * *"  # daily at 09:30 UTC (1:30 AM Pacific)
+    - cron: "30 9 1 * *"  # the 1st of every month at 09:30 UTC, before Store prices at 12:00
   workflow_dispatch:
     inputs:
       force:
@@ -33,7 +35,7 @@ jobs:
         run: |
           git fetch --depth 1 origin data 2>/dev/null && git show origin/data:manifest.json > "$RUNNER_TEMP/manifest.json" || echo "No library build yet"
       - id: check
-        run: python tools/check_sets.py --manifest "$RUNNER_TEMP/manifest.json" ${{ inputs.force && '--force' || '' }}
+        run: python tools/check_sets.py --manifest "$RUNNER_TEMP/manifest.json" ${{ (github.event_name == 'schedule' || inputs.force) && '--force' || '' }}
 
   build:
     needs: check
@@ -61,8 +63,10 @@ jobs:
           git commit -q -m "Card library $(date -u +%Y-%m-%d)"
           git push -f "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.git" data
 
+  # A scheduled run leaves the deploy to Store prices, which runs a few hours later.
   deploy:
     needs: build
+    if: github.event_name != 'schedule'
     permissions:
       contents: read
       pages: write

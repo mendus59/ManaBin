@@ -1,10 +1,11 @@
-# Card Kingdom and MTGGoldfish prices for every printing in the card library, weekly.
+# Card Kingdom and MTGGoldfish prices for every printing in the card library, on the 1st
+# of every month (after the Card library rebuild that morning).
 # Like the library, the price files live on their own branch (`prices`), not main.
 name: Store prices
 
 on:
   schedule:
-    - cron: "0 12 * * 1"  # Mondays 12:00 UTC
+    - cron: "0 12 1 * *"  # the 1st of every month at 12:00 UTC
   workflow_dispatch:
     inputs:
       goldfish:
@@ -49,8 +50,10 @@ jobs:
           git commit -q -m "Store prices $(date -u +%Y-%m-%d)"
           git push -f "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.git" prices
 
+  # Deploys even if fetching prices failed, so that morning's library rebuild still goes out.
   deploy:
     needs: build
+    if: ${{ !cancelled() }}
     permissions:
       contents: read
       pages: write

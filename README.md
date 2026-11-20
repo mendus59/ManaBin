@@ -6,7 +6,7 @@
      See CLAUDE.md ("Site summary"). -->
 A free web app for tracking a Magic: The Gathering collection, with every card and printing and Scryfall-style search.
 
-- Open to a dashboard of your collection's value, its price change over the week, recent additions, decks and binders.
+- Open to a dashboard of your collection's value, its change since the last monthly price update, recent additions, decks and binders.
 - Browse the full paper card library, with every printing and art variant, updated on each set's release day.
 - Install it on a phone and scan cards with the camera, then fix printing, finish or condition and save them to a binder.
 - Add the exact printing, finish, condition and language you own, sort cards into binders, and import or export ManaBox CSVs.
@@ -21,7 +21,7 @@ ManaBin started as [manabox-viewer](https://github.com/mendus59/manabox-viewer).
 ManaBin opens on **Home**. Visitors who aren't signed in get a short tour of what ManaBin does, a **Sign in with Google** button and a card search that needs no account. Once you have an account, Home becomes a dashboard:
 
 - **Quick actions** for Scan cards, Add a card, New deck and Import CSV.
-- **Collection value**, priced with the store you picked on My collection, and how much it changed since the price update about a week earlier. The change only counts cards you owned then, so adding cards never shows as a gain. Earlier prices are remembered on each device, so the change appears after the next daily price update on that device.
+- **Collection value**, priced with the store you picked on My collection, and how much it changed since the previous price update. Prices update on the 1st of every month, and the dashboard says when they were last updated. The change only counts cards you owned then, so adding cards never shows as a gain. Earlier prices are remembered on each device, so the change appears after the next price update on that device.
 - **Recently added** cards, the **biggest price moves** among the cards you own, your most recently changed **decks** (with value and cards missing) and each **binder**'s card count and value.
 
 The full list of every card is the **Browse** tab.
@@ -93,7 +93,7 @@ The Firebase web config in `src/lib/firebase.ts` is public by design; access is 
 
 ```
 Scryfall bulk data ──► tools/build_library.py ──► data branch ──► Vite build ──► GitHub Pages
-   (every printing)        (daily check)            (JSON)
+   (every printing)       (1st of the month)        (JSON)
 ```
 
 - **The app** (`src/`) is Preact + TypeScript, built with Vite. All searching happens in the browser, so using the site never calls the Scryfall API. Card images load from Scryfall's image CDN, which Scryfall permits.
@@ -106,7 +106,7 @@ Scryfall bulk data ──► tools/build_library.py ──► data branch ──
 
 ## Keeping the library current
 
-`.github/workflows/library.yml` runs daily at 09:30 UTC. `tools/check_sets.py` compares Scryfall's set list with the last build and rebuilds when:
+`.github/workflows/library.yml` rebuilds the library on the 1st of every month at 09:30 UTC, which also refreshes the TCGplayer prices. It doesn't deploy: the Store prices run at 12:00 that day does, so the site is published once a month with both. Run by hand, `tools/check_sets.py` compares Scryfall's set list with the last build and only rebuilds when:
 
 - a set has been released that the last build didn't include, or
 - the last build is more than 30 days old (to pick up new printings, errata and price changes).
@@ -133,7 +133,7 @@ npm run build                       # production build in dist/
 Every printing has prices from three stores, shown side by side in the card dialog:
 
 - **TCGplayer** market prices, from Scryfall's bulk data, refreshed whenever the library rebuilds.
-- **Card Kingdom** near-mint retail and **MTGGoldfish** paper prices, fetched weekly by `.github/workflows/prices.yml` (Mondays 12:00 UTC) running `tools/build_prices.py`. Card Kingdom's public price list is one download, matched on Scryfall ID. MTGGoldfish is read one set page at a time (about 340 pages, two seconds apart) and matched on set code, collector number and finish.
+- **Card Kingdom** near-mint retail and **MTGGoldfish** paper prices, fetched monthly by `.github/workflows/prices.yml` (the 1st at 12:00 UTC) running `tools/build_prices.py`. Card Kingdom's public price list is one download, matched on Scryfall ID. MTGGoldfish is read one set page at a time (about 340 pages, two seconds apart) and matched on set code, collector number and finish.
 
 The price files are force-pushed to the `prices` branch, like the library's `data` branch, and the Pages deploy adds them under `library/prices/`. To refresh by hand: **Actions → Store prices → Run workflow**.
 

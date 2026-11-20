@@ -1,10 +1,9 @@
 # Type-checks, tests and builds every pull request.
 name: CI
 
+# Only pull requests: a merge to main is already tested and built by the Pages deploy.
 on:
   pull_request:
-  push:
-    branches: [main]
 
 permissions:
   contents: read
