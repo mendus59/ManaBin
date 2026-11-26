@@ -14,6 +14,9 @@ A free web app for tracking a Magic: The Gathering collection, with every card a
 - Sign in with Google to sync across devices, compare prices from three stores, keep a wishlist and share with friends.
 <!-- site-summary:end -->
 
+<!-- site-screenshot: docs/screenshot.jpg -->
+![Screenshot of ManaBin](docs/screenshot.jpg)
+
 ManaBin started as [manabox-viewer](https://github.com/mendus59/manabox-viewer). It is now a full collection manager: binders, decks, an EDH deck builder that knows what you own, and card scanning on phones.
 
 ## Home
